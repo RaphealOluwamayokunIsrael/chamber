@@ -1,0 +1,44 @@
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
+import { ReactNode } from "react";
+
+type DashboardCardProps = {
+  href: string;
+  title: string;
+  description: string;
+  icon: ReactNode;
+  accent: string;
+};
+
+export default function DashboardCard({
+  href,
+  title,
+  description,
+  icon,
+  accent,
+}: DashboardCardProps) {
+  return (
+    <Link href={href}>
+      <div
+        className={`group cursor-pointer rounded-3xl border border-white/40 bg-white/80 p-8 shadow-xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl ${accent}`}
+      >
+        <div className="mb-6 transition group-hover:scale-110">
+          {icon}
+        </div>
+
+        <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+          {title}
+        </h3>
+
+        <p className="mt-3 text-gray-600 dark:text-gray-400">
+          {description}
+        </p>
+
+        <div className="mt-8 flex items-center font-semibold text-blue-600">
+          Open
+          <ArrowRight className="ml-2 h-5 w-5" />
+        </div>
+      </div>
+    </Link>
+  );
+}

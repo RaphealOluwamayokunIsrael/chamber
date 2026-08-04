@@ -1,14 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 
 export default function CreatePage() {
+  const router = useRouter();
+
   const [chamberName, setChamberName] = useState("");
+  const [chamberCode, setChamberCode] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
   const [organization, setOrganization] = useState("");
   const [division, setDivision] = useState("");
+  const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -16,6 +21,7 @@ export default function CreatePage() {
 
     if (
       chamberName.trim() === "" ||
+      chamberCode.trim() === "" ||
       description.trim() === "" ||
       category.trim() === "" ||
       organization.trim() === ""
@@ -24,29 +30,89 @@ export default function CreatePage() {
       return;
     }
 
-    const { error } = await supabase.from("chambers").insert([
-      {
-        chamber_name: chamberName,
-        description: description,
-        category: category,
-        organization: organization,
-        division: division,
-      },
-    ]);
+    setLoading(true);
+    setMessage("");
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setLoading(false);
+      setMessage("You must be logged in.");
+      return;
+    }
+
+    const formattedCode = chamberCode.trim().toUpperCase();
+
+    const { data: existing } = await supabase
+      .from("chambers")
+      .select("id")
+      .eq("chamber_code", formattedCode)
+      .maybeSingle();
+
+    if (existing) {
+      setLoading(false);
+      setMessage("❌ Chamber Code already exists.");
+      return;
+    }
+
+    const { data: chamber, error } = await supabase
+      .from("chambers")
+      .insert([
+{
+  chamber_name: chamberName,
+  chamber_code: formattedCode,
+  description,
+  category,
+  organization,
+  division,
+  visibility: "private",
+  owner_id: user.id,
+  profiles: user.id,
+}
+      ])
+      .select()
+      .single();
 
     if (error) {
       console.error(error);
+      setLoading(false);
       setMessage(`❌ ${error.message}`);
+      return;
+    }
+
+    const { error: memberError } = await supabase
+      .from("members")
+      .insert([
+        {
+          chamber_id: chamber.id,
+          user_id: user.id,
+          role: "Owner",
+        },
+      ]);
+
+    if (memberError) {
+      console.error(memberError);
+      setLoading(false);
+      setMessage(`❌ ${memberError.message}`);
       return;
     }
 
     setMessage("✅ Chamber created successfully!");
 
     setChamberName("");
+    setChamberCode("");
     setDescription("");
     setCategory("");
     setOrganization("");
     setDivision("");
+
+    setLoading(false);
+
+    setTimeout(() => {
+     router.push(`/chamber/${chamber.id}`);
+    }, 1500);
   };
 
   return (
@@ -62,8 +128,7 @@ export default function CreatePage() {
         </p>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-5">
-
-          <div>
+                <div>
             <label className="block mb-2 font-medium text-gray-900 dark:text-white">
               Chamber Name
             </label>
@@ -79,12 +144,30 @@ export default function CreatePage() {
 
           <div>
             <label className="block mb-2 font-medium text-gray-900 dark:text-white">
+              Chamber Code
+            </label>
+
+            <input
+              type="text"
+              placeholder="e.g. ABC-HQ"
+              value={chamberCode}
+              onChange={(e) => setChamberCode(e.target.value.toUpperCase())}
+              className="w-full rounded-lg border border-gray-300 bg-white p-3 uppercase text-gray-900 placeholder:text-gray-400 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+            />
+
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              Choose a unique code that members will use to join your Chamber.
+            </p>
+          </div>
+
+          <div>
+            <label className="block mb-2 font-medium text-gray-900 dark:text-white">
               Description
             </label>
 
             <textarea
               rows={4}
-              placeholder="Describe your chamber"
+              placeholder="Describe your Chamber"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="w-full rounded-lg border border-gray-300 bg-white p-3 text-gray-900 placeholder:text-gray-400 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
@@ -144,46 +227,28 @@ export default function CreatePage() {
 
           <button
             type="submit"
-            className="w-full rounded-lg bg-black py-3 text-white dark:bg-white dark:text-black"
+            disabled={loading}
+            className="w-full rounded-xl bg-black py-3 text-white font-semibold transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-black dark:hover:bg-gray-200"
           >
-            Create Chamber
+            {loading ? "Creating Chamber..." : "Create Chamber"}
           </button>
 
           {message && (
-            <div className="rounded-lg bg-green-100 dark:bg-green-900 p-3 text-center text-green-700 dark:text-green-200">
+            <div
+              className={`rounded-lg p-3 text-center ${
+                message.startsWith("✅")
+                  ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200"
+                  : "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200"
+              }`}
+            >
               {message}
             </div>
           )}
 
-          <div className="rounded-lg bg-gray-100 dark:bg-gray-800 p-4">
-            <h2 className="font-bold text-gray-900 dark:text-white">
-              Chamber Preview
-            </h2>
-
-            <p className="text-gray-700 dark:text-gray-300">
-              <strong>Name:</strong> {chamberName || "Not entered"}
-            </p>
-
-            <p className="text-gray-700 dark:text-gray-300">
-              <strong>Description:</strong> {description || "Not entered"}
-            </p>
-
-            <p className="text-gray-700 dark:text-gray-300">
-              <strong>Category:</strong> {category || "Not entered"}
-            </p>
-
-            <p className="text-gray-700 dark:text-gray-300">
-              <strong>Organization:</strong> {organization || "Not entered"}
-            </p>
-
-            <p className="text-gray-700 dark:text-gray-300">
-              <strong>Division:</strong> {division || "Not entered"}
-            </p>
-          </div>
-
         </form>
 
-        <div className="mt-10 border-t border-gray-300 dark:border-gray-700 pt-6 text-center">
+        <div className="mt-10 border-t border-gray-300 pt-6 text-center dark:border-gray-700">
+
           <p className="text-sm text-gray-500 dark:text-gray-400">
             Powered by
           </p>
@@ -192,12 +257,13 @@ export default function CreatePage() {
             RIO LAB
           </h2>
 
-          <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-500">
             Building purposeful software for organizations.
           </p>
+
         </div>
 
       </div>
     </main>
   );
-}
+}  
