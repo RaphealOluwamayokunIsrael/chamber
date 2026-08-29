@@ -1,10 +1,10 @@
 "use client";
 
 import {
-  Bell,
   Search,
-  Moon,
-  Shield,
+  Phone,
+  Video,
+  MoreVertical,
 } from "lucide-react";
 
 export default function Topbar() {
@@ -14,69 +14,46 @@ export default function Topbar() {
       {/* Left */}
 
       <div>
-
-        <h1 className="text-2xl font-bold text-white">
-          General Chat
+        <h1 className="text-xl font-bold text-white">
+          Chamber
         </h1>
 
-        <p className="text-sm text-slate-400 mt-1">
-          Welcome to your Chamber workspace
+        <p className="text-sm text-slate-400">
+          Collaboration without distractions
         </p>
+      </div>
+
+      {/* Center */}
+
+      <div className="hidden lg:flex items-center bg-slate-800 rounded-xl px-4 py-2 w-[360px]">
+
+        <Search
+          className="text-slate-500"
+          size={18}
+        />
+
+        <input
+          type="text"
+          placeholder="Search messages..."
+          className="ml-3 bg-transparent outline-none text-white w-full placeholder:text-slate-500"
+        />
 
       </div>
 
       {/* Right */}
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
 
-        {/* Search */}
-
-        <div className="relative hidden md:block">
-
-          <Search
-            size={18}
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
-          />
-
-          <input
-            type="text"
-            placeholder="Search messages..."
-            className="w-72 rounded-xl border border-slate-700 bg-slate-800 py-3 pl-11 pr-4 text-white placeholder:text-slate-500 outline-none transition focus:border-blue-500"
-          />
-
-        </div>
-
-        {/* Notifications */}
-
-        <button className="relative rounded-xl bg-slate-800 p-3 text-slate-300 transition hover:bg-slate-700 hover:text-white">
-
-          <Bell size={21} />
-
-          <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-red-500"></span>
-
+        <button className="h-11 w-11 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center justify-center">
+          <Phone size={20} className="text-white" />
         </button>
 
-        {/* Chamber Security */}
+        <button className="h-11 w-11 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center justify-center">
+          <Video size={20} className="text-white" />
+        </button>
 
-        <div className="hidden lg:flex items-center gap-2 rounded-xl bg-slate-800 px-4 py-3">
-
-          <Shield
-            size={18}
-            className="text-emerald-400"
-          />
-
-          <span className="text-sm text-slate-300">
-            Secure Chamber
-          </span>
-
-        </div>
-
-        {/* Theme */}
-
-        <button className="rounded-xl bg-slate-800 p-3 text-slate-300 transition hover:bg-slate-700 hover:text-white">
-
-          <Moon size={20} />
-
+        <button className="h-11 w-11 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center justify-center">
+          <MoreVertical size={20} className="text-white" />
         </button>
 
       </div>

@@ -1,16 +1,18 @@
-type MessageBubbleProps = {
+"use client";
+
+type Props = {
   message: string;
-  senderName: string;
-  isMine: boolean;
+  sender: string;
   createdAt: string;
+  isMine: boolean;
 };
 
 export default function MessageBubble({
   message,
-  senderName,
-  isMine,
+  sender,
   createdAt,
-}: MessageBubbleProps) {
+  isMine,
+}: Props) {
   return (
     <div
       className={`flex mb-4 ${
@@ -18,27 +20,27 @@ export default function MessageBubble({
       }`}
     >
       <div
-        className={`max-w-[75%] rounded-2xl px-4 py-3 shadow ${
+        className={`max-w-[75%] rounded-2xl px-5 py-3 shadow-lg ${
           isMine
-            ? "bg-blue-600 text-white"
-            : "bg-gray-200 dark:bg-gray-800 text-black dark:text-white"
+            ? "bg-blue-600 text-white rounded-br-md"
+            : "bg-slate-800 text-white rounded-bl-md"
         }`}
       >
         {!isMine && (
-          <p className="text-xs font-bold mb-1 text-blue-600">
-            {senderName}
+          <p className="mb-1 text-xs font-semibold text-blue-400">
+            {sender}
           </p>
         )}
 
-        <p className="whitespace-pre-wrap">
+        <p className="whitespace-pre-wrap break-words">
           {message}
         </p>
 
         <p
-          className={`mt-2 text-right text-xs ${
+          className={`mt-2 text-right text-[11px] ${
             isMine
               ? "text-blue-100"
-              : "text-gray-500"
+              : "text-slate-400"
           }`}
         >
           {new Date(createdAt).toLocaleTimeString([], {
