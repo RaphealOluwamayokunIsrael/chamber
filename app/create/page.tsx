@@ -40,73 +40,20 @@ export default function CreatePage() {
 
     try {
       /*
-       * GET CURRENT SESSION
-       */
-      const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession();
-
-      if (sessionError) {
-        console.error("SESSION ERROR:", sessionError);
-
-        setMessage(
-          `Authentication error: ${sessionError.message}`
-        );
-
-        setLoading(false);
-        return;
-      }
-
-      if (!session) {
-        setMessage(
-          "You are not signed in. Please sign in again."
-        );
-
-        setLoading(false);
-        return;
-      }
-
-      /*
-       * GET CURRENT USER
+       * CHECK LOGIN
        */
       const {
         data: { user },
         error: userError,
       } = await supabase.auth.getUser();
 
-      if (userError) {
-        console.error("USER ERROR:", userError);
-
+      if (userError || !user) {
         setMessage(
-          `Unable to verify your account: ${userError.message}`
+          "You are not logged in. Please sign in again."
         );
-
         setLoading(false);
         return;
       }
-
-      if (!user) {
-        setMessage(
-          "No authenticated user was found. Please sign in again."
-        );
-
-        setLoading(false);
-        return;
-      }
-
-      /*
-       * IMPORTANT AUTH DIAGNOSTICS
-       */
-      console.log("========== CHAMBER AUTH ==========");
-      console.log("USER ID:", user.id);
-      console.log("USER EMAIL:", user.email);
-      console.log("SESSION USER ID:", session.user.id);
-      console.log(
-        "ACCESS TOKEN EXISTS:",
-        Boolean(session.access_token)
-      );
-      console.log("==================================");
 
       /*
        * NORMALIZE CHAMBER CODE
@@ -116,73 +63,27 @@ export default function CreatePage() {
         .toUpperCase();
 
       /*
-       * CHECK EXISTING CHAMBER CODE
-       */
-      const {
-        data: existing,
-        error: existingError,
-      } = await supabase
-        .from("chambers")
-        .select("id")
-        .eq("chamber_code", code)
-        .maybeSingle();
-
-      if (existingError) {
-        console.error(
-          "CHECK CHAMBER CODE ERROR:",
-          existingError
-        );
-
-        setMessage(
-          `Unable to check Chamber code: ${existingError.message}`
-        );
-
-        setLoading(false);
-        return;
-      }
-
-      if (existing) {
-        setMessage(
-          "❌ Chamber code already exists. Please choose another code."
-        );
-
-        setLoading(false);
-        return;
-      }
-
-      /*
-       * CREATE CHAMBER
+       * CREATE CHAMBER USING SECURE DATABASE FUNCTION
        */
       const {
         data: chamber,
         error: chamberError,
-      } = await supabase
-        .from("chambers")
-        .insert({
-          chamber_name: chamberName.trim(),
-          chamber_code: code,
-          description: description.trim(),
-          category: category.trim(),
-          organization: organization.trim(),
-          division: division.trim(),
-          visibility: "private",
-          owner_id: user.id,
-        })
-        .select()
-        .single();
+      } = await supabase.rpc(
+        "create_chamber",
+        {
+          p_chamber_name: chamberName.trim(),
+          p_chamber_code: code,
+          p_description: description.trim(),
+          p_category: category.trim(),
+          p_organization: organization.trim(),
+          p_division: division.trim(),
+        }
+      );
 
       if (chamberError) {
         console.error(
-          "========== CREATE CHAMBER ERROR =========="
-        );
-
-        console.error("CODE:", chamberError.code);
-        console.error("MESSAGE:", chamberError.message);
-        console.error("DETAILS:", chamberError.details);
-        console.error("HINT:", chamberError.hint);
-
-        console.error(
-          "=========================================="
+          "CREATE CHAMBER ERROR:",
+          chamberError
         );
 
         setMessage(
@@ -194,6 +95,9 @@ export default function CreatePage() {
         return;
       }
 
+      /*
+       * CONFIRM CHAMBER WAS CREATED
+       */
       if (!chamber) {
         setMessage(
           "Chamber creation failed. No Chamber was returned."
@@ -204,40 +108,12 @@ export default function CreatePage() {
       }
 
       /*
-       * ADD CREATOR AS OWNER
+       * OPEN THE NEW CHAMBER
        */
-      const {
-        error: memberError,
-      } = await supabase
-        .from("members")
-        .insert({
-          chamber_id: chamber.id,
-          user_id: user.id,
-          role: "Owner",
-        });
+      router.push(
+        `/chamber/${chamber.id}`
+      );
 
-      if (memberError) {
-        console.error(
-          "ADD CHAMBER OWNER ERROR:",
-          memberError
-        );
-
-        /*
-         * The Chamber already exists.
-         * We therefore tell the user exactly what happened.
-         */
-        setMessage(
-          `Chamber was created, but owner membership failed: ${memberError.message}`
-        );
-
-        setLoading(false);
-        return;
-      }
-
-      /*
-       * SUCCESS
-       */
-      router.push(`/chamber/${chamber.id}`);
     } catch (error) {
       console.error(
         "CREATE CHAMBER UNEXPECTED ERROR:",
@@ -258,6 +134,7 @@ export default function CreatePage() {
     <main className="flex min-h-screen items-center justify-center bg-gray-100 p-6 dark:bg-gray-950">
       <div className="w-full max-w-xl rounded-2xl bg-white p-8 shadow-xl dark:bg-gray-900">
 
+        {/* HEADER */}
         <div className="text-center">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             Create Chamber
@@ -268,6 +145,7 @@ export default function CreatePage() {
           </p>
         </div>
 
+        {/* COMPANY TEMPLATE */}
         <div className="mt-6 rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/40">
           <p className="text-sm font-semibold text-blue-700 dark:text-blue-300">
             Company Template
@@ -282,11 +160,13 @@ export default function CreatePage() {
           </p>
         </div>
 
+        {/* FORM */}
         <form
           onSubmit={handleSubmit}
           className="mt-8 space-y-5"
         >
 
+          {/* CHAMBER NAME */}
           <div>
             <label className="mb-2 block font-medium text-gray-900 dark:text-white">
               Chamber Name
@@ -304,6 +184,7 @@ export default function CreatePage() {
             />
           </div>
 
+          {/* CHAMBER CODE */}
           <div>
             <label className="mb-2 block font-medium text-gray-900 dark:text-white">
               Chamber Code
@@ -327,6 +208,7 @@ export default function CreatePage() {
             </p>
           </div>
 
+          {/* DESCRIPTION */}
           <div>
             <label className="mb-2 block font-medium text-gray-900 dark:text-white">
               Description
@@ -344,6 +226,7 @@ export default function CreatePage() {
             />
           </div>
 
+          {/* CATEGORY */}
           <div>
             <label className="mb-2 block font-medium text-gray-900 dark:text-white">
               Category
@@ -399,6 +282,7 @@ export default function CreatePage() {
             </select>
           </div>
 
+          {/* ORGANIZATION */}
           <div>
             <label className="mb-2 block font-medium text-gray-900 dark:text-white">
               Organization
@@ -416,6 +300,7 @@ export default function CreatePage() {
             />
           </div>
 
+          {/* DIVISION */}
           <div>
             <label className="mb-2 block font-medium text-gray-900 dark:text-white">
               Division
@@ -437,6 +322,7 @@ export default function CreatePage() {
             </p>
           </div>
 
+          {/* SUBMIT */}
           <button
             type="submit"
             disabled={loading}
@@ -447,13 +333,10 @@ export default function CreatePage() {
               : "Create Chamber"}
           </button>
 
+          {/* MESSAGE */}
           {message && (
             <div
-              className={`rounded-lg p-3 text-center ${
-                message.startsWith("❌")
-                  ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200"
-                  : "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200"
-              }`}
+              className="rounded-lg bg-red-100 p-3 text-center text-red-700 dark:bg-red-900 dark:text-red-200"
             >
               {message}
             </div>
@@ -461,6 +344,7 @@ export default function CreatePage() {
 
         </form>
 
+        {/* FOOTER */}
         <div className="mt-8 border-t pt-6 text-center dark:border-gray-700">
           <p className="text-sm text-gray-500">
             Powered by
