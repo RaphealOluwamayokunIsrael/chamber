@@ -35,9 +35,7 @@ export default function CreatePage() {
       !organization.trim() ||
       !division.trim()
     ) {
-      setMessage(
-        "Please complete all required fields."
-      );
+      setMessage("Please complete all required fields.");
       return;
     }
 
@@ -45,17 +43,108 @@ export default function CreatePage() {
 
     try {
       /*
-       * CHECK LOGIN
+       * CHECK AUTHENTICATION SESSION
        */
       const {
-        data: { user },
-      } = await supabase.auth.getUser();
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
 
-      if (!user) {
-        setMessage("Please login first.");
+      if (sessionError) {
+        console.error(
+          "GET SESSION ERROR:",
+          sessionError
+        );
+
+        setMessage(
+          `Authentication error: ${sessionError.message}`
+        );
+
         setLoading(false);
         return;
       }
+
+      if (!session) {
+        console.error(
+          "NO ACTIVE SESSION FOUND."
+        );
+
+        setMessage(
+          "Your session has expired or you are not logged in. Please sign in again."
+        );
+
+        setLoading(false);
+        return;
+      }
+
+      /*
+       * GET CURRENT USER
+       */
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError) {
+        console.error(
+          "GET USER ERROR:",
+          userError
+        );
+
+        setMessage(
+          `Unable to verify your account: ${userError.message}`
+        );
+
+        setLoading(false);
+        return;
+      }
+
+      if (!user) {
+        console.error(
+          "NO AUTHENTICATED USER FOUND."
+        );
+
+        setMessage(
+          "Please login first."
+        );
+
+        setLoading(false);
+        return;
+      }
+
+      /*
+       * AUTHENTICATION DIAGNOSTIC
+       *
+       * This lets us confirm exactly which
+       * Supabase user is performing the INSERT.
+       */
+      console.log(
+        "========== CREATE CHAMBER AUTH =========="
+      );
+
+      console.log(
+        "USER ID:",
+        user.id
+      );
+
+      console.log(
+        "USER EMAIL:",
+        user.email
+      );
+
+      console.log(
+        "SESSION USER ID:",
+        session.user.id
+      );
+
+      console.log(
+        "ACCESS TOKEN EXISTS:",
+        Boolean(session.access_token)
+      );
+
+      console.log(
+        "=========================================="
+      );
 
       /*
        * NORMALIZE CHAMBER CODE
@@ -83,7 +172,7 @@ export default function CreatePage() {
         );
 
         setMessage(
-          "Unable to check the Chamber code."
+          `Unable to check the Chamber code: ${existingError.message}`
         );
 
         setLoading(false);
@@ -102,6 +191,24 @@ export default function CreatePage() {
       /*
        * CREATE CHAMBER
        */
+      console.log(
+        "========== CHAMBER INSERT =========="
+      );
+
+      console.log(
+        "OWNER ID BEING SENT:",
+        user.id
+      );
+
+      console.log(
+        "USER ID USED BY SESSION:",
+        session.user.id
+      );
+
+      console.log(
+        "===================================="
+      );
+
       const {
         data: chamber,
         error: chamberError,
@@ -124,8 +231,36 @@ export default function CreatePage() {
 
       if (chamberError || !chamber) {
         console.error(
-          "CREATE CHAMBER ERROR:",
+          "========== CREATE CHAMBER ERROR =========="
+        );
+
+        console.error(
+          "ERROR:",
           chamberError
+        );
+
+        console.error(
+          "ERROR MESSAGE:",
+          chamberError?.message
+        );
+
+        console.error(
+          "ERROR CODE:",
+          chamberError?.code
+        );
+
+        console.error(
+          "ERROR DETAILS:",
+          chamberError?.details
+        );
+
+        console.error(
+          "ERROR HINT:",
+          chamberError?.hint
+        );
+
+        console.error(
+          "=========================================="
         );
 
         setMessage(
@@ -174,7 +309,7 @@ export default function CreatePage() {
       );
     } catch (error) {
       console.error(
-        "CREATE CHAMBER ERROR:",
+        "CREATE CHAMBER UNEXPECTED ERROR:",
         error
       );
 
@@ -425,6 +560,7 @@ export default function CreatePage() {
           <p className="mt-1 text-xs text-gray-500">
             Building purposeful software for organizations.
           </p>
+
         </div>
 
       </div>
