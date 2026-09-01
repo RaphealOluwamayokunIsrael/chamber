@@ -24,9 +24,6 @@ export default function CreatePage() {
 
     setMessage("");
 
-    /*
-     * REQUIRED FIELDS
-     */
     if (
       !chamberName.trim() ||
       !chamberCode.trim() ||
@@ -43,7 +40,7 @@ export default function CreatePage() {
 
     try {
       /*
-       * CHECK AUTHENTICATION SESSION
+       * GET CURRENT SESSION
        */
       const {
         data: { session },
@@ -51,10 +48,7 @@ export default function CreatePage() {
       } = await supabase.auth.getSession();
 
       if (sessionError) {
-        console.error(
-          "GET SESSION ERROR:",
-          sessionError
-        );
+        console.error("SESSION ERROR:", sessionError);
 
         setMessage(
           `Authentication error: ${sessionError.message}`
@@ -65,12 +59,8 @@ export default function CreatePage() {
       }
 
       if (!session) {
-        console.error(
-          "NO ACTIVE SESSION FOUND."
-        );
-
         setMessage(
-          "Your session has expired or you are not logged in. Please sign in again."
+          "You are not signed in. Please sign in again."
         );
 
         setLoading(false);
@@ -86,10 +76,7 @@ export default function CreatePage() {
       } = await supabase.auth.getUser();
 
       if (userError) {
-        console.error(
-          "GET USER ERROR:",
-          userError
-        );
+        console.error("USER ERROR:", userError);
 
         setMessage(
           `Unable to verify your account: ${userError.message}`
@@ -100,12 +87,8 @@ export default function CreatePage() {
       }
 
       if (!user) {
-        console.error(
-          "NO AUTHENTICATED USER FOUND."
-        );
-
         setMessage(
-          "Please login first."
+          "No authenticated user was found. Please sign in again."
         );
 
         setLoading(false);
@@ -113,38 +96,17 @@ export default function CreatePage() {
       }
 
       /*
-       * AUTHENTICATION DIAGNOSTIC
-       *
-       * This lets us confirm exactly which
-       * Supabase user is performing the INSERT.
+       * IMPORTANT AUTH DIAGNOSTICS
        */
-      console.log(
-        "========== CREATE CHAMBER AUTH =========="
-      );
-
-      console.log(
-        "USER ID:",
-        user.id
-      );
-
-      console.log(
-        "USER EMAIL:",
-        user.email
-      );
-
-      console.log(
-        "SESSION USER ID:",
-        session.user.id
-      );
-
+      console.log("========== CHAMBER AUTH ==========");
+      console.log("USER ID:", user.id);
+      console.log("USER EMAIL:", user.email);
+      console.log("SESSION USER ID:", session.user.id);
       console.log(
         "ACCESS TOKEN EXISTS:",
         Boolean(session.access_token)
       );
-
-      console.log(
-        "=========================================="
-      );
+      console.log("==================================");
 
       /*
        * NORMALIZE CHAMBER CODE
@@ -154,7 +116,7 @@ export default function CreatePage() {
         .toUpperCase();
 
       /*
-       * CHECK WHETHER CHAMBER CODE ALREADY EXISTS
+       * CHECK EXISTING CHAMBER CODE
        */
       const {
         data: existing,
@@ -172,7 +134,7 @@ export default function CreatePage() {
         );
 
         setMessage(
-          `Unable to check the Chamber code: ${existingError.message}`
+          `Unable to check Chamber code: ${existingError.message}`
         );
 
         setLoading(false);
@@ -191,80 +153,40 @@ export default function CreatePage() {
       /*
        * CREATE CHAMBER
        */
-      console.log(
-        "========== CHAMBER INSERT =========="
-      );
-
-      console.log(
-        "OWNER ID BEING SENT:",
-        user.id
-      );
-
-      console.log(
-        "USER ID USED BY SESSION:",
-        session.user.id
-      );
-
-      console.log(
-        "===================================="
-      );
-
       const {
         data: chamber,
         error: chamberError,
       } = await supabase
         .from("chambers")
-        .insert([
-          {
-            chamber_name: chamberName.trim(),
-            chamber_code: code,
-            description: description.trim(),
-            category: category.trim(),
-            organization: organization.trim(),
-            division: division.trim(),
-            visibility: "private",
-            owner_id: user.id,
-          },
-        ])
+        .insert({
+          chamber_name: chamberName.trim(),
+          chamber_code: code,
+          description: description.trim(),
+          category: category.trim(),
+          organization: organization.trim(),
+          division: division.trim(),
+          visibility: "private",
+          owner_id: user.id,
+        })
         .select()
         .single();
 
-      if (chamberError || !chamber) {
+      if (chamberError) {
         console.error(
           "========== CREATE CHAMBER ERROR =========="
         );
 
-        console.error(
-          "ERROR:",
-          chamberError
-        );
-
-        console.error(
-          "ERROR MESSAGE:",
-          chamberError?.message
-        );
-
-        console.error(
-          "ERROR CODE:",
-          chamberError?.code
-        );
-
-        console.error(
-          "ERROR DETAILS:",
-          chamberError?.details
-        );
-
-        console.error(
-          "ERROR HINT:",
-          chamberError?.hint
-        );
+        console.error("CODE:", chamberError.code);
+        console.error("MESSAGE:", chamberError.message);
+        console.error("DETAILS:", chamberError.details);
+        console.error("HINT:", chamberError.hint);
 
         console.error(
           "=========================================="
         );
 
         setMessage(
-          chamberError?.message ??
+          chamberError.message ||
             "Failed to create Chamber."
         );
 
@@ -272,29 +194,9 @@ export default function CreatePage() {
         return;
       }
 
-      /*
-       * ADD CREATOR AS ADMIN
-       */
-      const {
-        error: memberError,
-      } = await supabase
-        .from("members")
-        .insert([
-          {
-            chamber_id: chamber.id,
-            user_id: user.id,
-            role: "Admin",
-          },
-        ]);
-
-      if (memberError) {
-        console.error(
-          "ADD CHAMBER ADMIN ERROR:",
-          memberError
-        );
-
+      if (!chamber) {
         setMessage(
-          "Chamber was created, but your administrator membership could not be created."
+          "Chamber creation failed. No Chamber was returned."
         );
 
         setLoading(false);
@@ -302,11 +204,40 @@ export default function CreatePage() {
       }
 
       /*
-       * OPEN THE NEW CHAMBER
+       * ADD CREATOR AS OWNER
        */
-      router.push(
-        `/chamber/${chamber.id}`
-      );
+      const {
+        error: memberError,
+      } = await supabase
+        .from("members")
+        .insert({
+          chamber_id: chamber.id,
+          user_id: user.id,
+          role: "Owner",
+        });
+
+      if (memberError) {
+        console.error(
+          "ADD CHAMBER OWNER ERROR:",
+          memberError
+        );
+
+        /*
+         * The Chamber already exists.
+         * We therefore tell the user exactly what happened.
+         */
+        setMessage(
+          `Chamber was created, but owner membership failed: ${memberError.message}`
+        );
+
+        setLoading(false);
+        return;
+      }
+
+      /*
+       * SUCCESS
+       */
+      router.push(`/chamber/${chamber.id}`);
     } catch (error) {
       console.error(
         "CREATE CHAMBER UNEXPECTED ERROR:",
@@ -327,19 +258,16 @@ export default function CreatePage() {
     <main className="flex min-h-screen items-center justify-center bg-gray-100 p-6 dark:bg-gray-950">
       <div className="w-full max-w-xl rounded-2xl bg-white p-8 shadow-xl dark:bg-gray-900">
 
-        {/* HEADER */}
         <div className="text-center">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             Create Chamber
           </h1>
 
           <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Create a secure collaboration space
-            for your organization.
+            Create a secure collaboration space for your organization.
           </p>
         </div>
 
-        {/* COMPANY TEMPLATE */}
         <div className="mt-6 rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/40">
           <p className="text-sm font-semibold text-blue-700 dark:text-blue-300">
             Company Template
@@ -354,13 +282,11 @@ export default function CreatePage() {
           </p>
         </div>
 
-        {/* FORM */}
         <form
           onSubmit={handleSubmit}
           className="mt-8 space-y-5"
         >
 
-          {/* CHAMBER NAME */}
           <div>
             <label className="mb-2 block font-medium text-gray-900 dark:text-white">
               Chamber Name
@@ -370,16 +296,14 @@ export default function CreatePage() {
               type="text"
               value={chamberName}
               onChange={(e) =>
-                setChamberName(
-                  e.target.value
-                )
+                setChamberName(e.target.value)
               }
               placeholder="Operations Strategy Chamber"
               className="w-full rounded-lg border border-gray-300 p-3 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              required
             />
           </div>
 
-          {/* CHAMBER CODE */}
           <div>
             <label className="mb-2 block font-medium text-gray-900 dark:text-white">
               Chamber Code
@@ -395,15 +319,14 @@ export default function CreatePage() {
               }
               placeholder="OIL-500"
               className="w-full rounded-lg border border-gray-300 p-3 uppercase dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              required
             />
 
             <p className="mt-1 text-sm text-gray-500">
-              Members will use this code to join
-              the Chamber.
+              Members will use this code to join the Chamber.
             </p>
           </div>
 
-          {/* DESCRIPTION */}
           <div>
             <label className="mb-2 block font-medium text-gray-900 dark:text-white">
               Description
@@ -413,16 +336,14 @@ export default function CreatePage() {
               rows={4}
               value={description}
               onChange={(e) =>
-                setDescription(
-                  e.target.value
-                )
+                setDescription(e.target.value)
               }
               placeholder="Secure collaboration space for the company's operations and strategy team."
               className="w-full rounded-lg border border-gray-300 p-3 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              required
             />
           </div>
 
-          {/* CATEGORY */}
           <div>
             <label className="mb-2 block font-medium text-gray-900 dark:text-white">
               Category
@@ -431,11 +352,10 @@ export default function CreatePage() {
             <select
               value={category}
               onChange={(e) =>
-                setCategory(
-                  e.target.value
-                )
+                setCategory(e.target.value)
               }
               className="w-full rounded-lg border border-gray-300 p-3 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              required
             >
               <option value="">
                 Select Category
@@ -479,7 +399,6 @@ export default function CreatePage() {
             </select>
           </div>
 
-          {/* ORGANIZATION */}
           <div>
             <label className="mb-2 block font-medium text-gray-900 dark:text-white">
               Organization
@@ -489,16 +408,14 @@ export default function CreatePage() {
               type="text"
               value={organization}
               onChange={(e) =>
-                setOrganization(
-                  e.target.value
-                )
+                setOrganization(e.target.value)
               }
               placeholder="Atlantic Energy Resources"
               className="w-full rounded-lg border border-gray-300 p-3 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              required
             />
           </div>
 
-          {/* DIVISION */}
           <div>
             <label className="mb-2 block font-medium text-gray-900 dark:text-white">
               Division
@@ -508,12 +425,11 @@ export default function CreatePage() {
               type="text"
               value={division}
               onChange={(e) =>
-                setDivision(
-                  e.target.value
-                )
+                setDivision(e.target.value)
               }
               placeholder="Operations Department"
               className="w-full rounded-lg border border-gray-300 p-3 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              required
             />
 
             <p className="mt-1 text-sm text-gray-500">
@@ -521,7 +437,6 @@ export default function CreatePage() {
             </p>
           </div>
 
-          {/* SUBMIT */}
           <button
             type="submit"
             disabled={loading}
@@ -532,7 +447,6 @@ export default function CreatePage() {
               : "Create Chamber"}
           </button>
 
-          {/* MESSAGE */}
           {message && (
             <div
               className={`rounded-lg p-3 text-center ${
@@ -547,7 +461,6 @@ export default function CreatePage() {
 
         </form>
 
-        {/* FOOTER */}
         <div className="mt-8 border-t pt-6 text-center dark:border-gray-700">
           <p className="text-sm text-gray-500">
             Powered by
@@ -560,7 +473,6 @@ export default function CreatePage() {
           <p className="mt-1 text-xs text-gray-500">
             Building purposeful software for organizations.
           </p>
-
         </div>
 
       </div>
