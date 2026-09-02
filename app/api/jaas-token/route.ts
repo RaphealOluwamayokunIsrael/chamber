@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
 import crypto from "crypto";
 
 function base64UrlEncode(input: string | Buffer): string {
@@ -68,8 +66,7 @@ export async function POST(req: NextRequest) {
 
     const appId = process.env.JAAS_APP_ID;
     const keyId = process.env.JAAS_KEY_ID;
-    const privateKeyPath =
-      process.env.JAAS_PRIVATE_KEY_PATH;
+    const privateKey = process.env.JAAS_PRIVATE_KEY;
 
     if (!appId) {
       return NextResponse.json(
@@ -89,43 +86,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!privateKeyPath) {
+    if (!privateKey) {
       return NextResponse.json(
         {
-          error:
-            "JAAS_PRIVATE_KEY_PATH is not configured.",
+          error: "JAAS_PRIVATE_KEY is not configured.",
         },
         { status: 500 }
       );
     }
 
-    const absoluteKeyPath = path.resolve(
-      process.cwd(),
-      privateKeyPath
-    );
-
-    if (!fs.existsSync(absoluteKeyPath)) {
-      return NextResponse.json(
-        {
-          error:
-            "JaaS private key file was not found.",
-        },
-        { status: 500 }
-      );
-    }
-
-    const privateKey = fs.readFileSync(
-      absoluteKeyPath,
-      "utf8"
-    );
+    // Convert literal "\n" into real line breaks.
+    const formattedPrivateKey =
+      privateKey.replace(/\\n/g, "\n");
 
     /*
-     * JaaS roomName from the frontend is:
+     * The frontend sends the room name as:
      *
      * APP_ID/ROOM_NAME
      *
-     * The JWT "room" claim should contain
-     * only the actual room name.
+     * The JWT "room" claim must contain
+     * only ROOM_NAME.
      */
     const expectedPrefix = `${appId}/`;
 
@@ -166,20 +146,13 @@ export async function POST(req: NextRequest) {
 
       sub: appId,
 
-      /*
-       * IMPORTANT:
-       * This is the actual room name,
-       * NOT AppID/room.
-       */
       room: jaasRoomName,
 
       context: {
         user: {
           id: participantId,
           name: participantName,
-
           email: `${participantId}@chamber.local`,
-
           moderator: "false",
         },
 
@@ -198,13 +171,24 @@ export async function POST(req: NextRequest) {
 
     const token = createJwt(
       payload,
-      privateKey,
+      formattedPrivateKey,
       keyId
     );
 
-    console.log("JAAS JWT ROOM:", jaasRoomName);
-    console.log("JAAS SDK ROOM:", roomName);
-    console.log("JAAS PARTICIPANT:", participantId);
+    console.log(
+      "JAAS JWT ROOM:",
+      jaasRoomName
+    );
+
+    console.log(
+      "JAAS SDK ROOM:",
+      roomName
+    );
+
+    console.log(
+      "JAAS PARTICIPANT:",
+      participantId
+    );
 
     return NextResponse.json({
       token,
