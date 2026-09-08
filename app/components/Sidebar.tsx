@@ -7,6 +7,8 @@ import {
   Folder,
   Calendar,
   BarChart3,
+  Bot,
+  Settings,
   Menu,
   X,
 } from "lucide-react";
@@ -17,7 +19,9 @@ export type ChamberSection =
   | "members"
   | "files"
   | "events"
-  | "polls";
+  | "polls"
+  | "ai"
+  | "settings";
 
 type SidebarProps = {
   activeSection: ChamberSection;
@@ -63,6 +67,16 @@ export default function Sidebar({
       label: "Polls",
       icon: BarChart3,
     },
+    {
+      id: "ai" as ChamberSection,
+      label: "Chamber AI",
+      icon: Bot,
+    },
+    {
+      id: "settings" as ChamberSection,
+      label: "Settings",
+      icon: Settings,
+    },
   ];
 
   return (
@@ -71,7 +85,7 @@ export default function Sidebar({
         collapsed ? "w-20" : "w-72"
       }`}
     >
-      {/* TOGGLE */}
+      {/* HEADER */}
       <div
         className={`flex h-20 items-center border-b border-slate-800 ${
           collapsed
@@ -116,7 +130,7 @@ export default function Sidebar({
       </div>
 
       {/* NAVIGATION */}
-      <nav className="flex-1 space-y-2 p-3">
+      <nav className="flex-1 space-y-2 overflow-y-auto p-3">
         {navigation.map((item) => {
           const Icon = item.icon;
 
