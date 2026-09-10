@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { GoogleGenAI } from "@google/genai";
 
 type ConversationMessage = {
   role: "user" | "assistant";
@@ -11,11 +12,6 @@ type ChamberMessage = {
   sender_id: string;
   message: string;
   created_at: string;
-};
-
-type OllamaResponse = {
-  response?: string;
-  error?: string;
 };
 
 const MAX_MESSAGE_LENGTH = 4000;
@@ -31,23 +27,23 @@ const MAX_EVENTS = 20;
 const MAX_POLLS = 20;
 const MAX_FILES = 50;
 
-const OLLAMA_TIMEOUT_MS = 60000;
+const GEMINI_TIMEOUT_MS = 60000;
 
 /*
- * Ollama generation settings.
+ * Gemini generation settings.
  *
  * These are deliberately conservative because Chamber AI
  * should be accurate, focused and reasonably fast.
  */
-const OLLAMA_TEMPERATURE = 0.2;
-const OLLAMA_NUM_PREDICT = 512;
-const OLLAMA_KEEP_ALIVE = "10m";
+const GEMINI_TEMPERATURE = 0.2;
+const GEMINI_MAX_OUTPUT_TOKENS = 512;
+const GEMINI_MODEL = "gemini-3.7-flash";
 
 /*
  * Context budgets.
  *
  * These prevent unnecessarily huge prompts from being sent
- * to the local AI model.
+ * to the AI model.
  */
 const MAX_MEMBER_CONTEXT_CHARS = 6000;
 const MAX_CHAT_CONTEXT_CHARS = 18000;
@@ -1398,119 +1394,117 @@ Now answer the user's question accurately using the Chamber context above.
 
     /*
      * ---------------------------------------------------------
-     * 17. Ollama configuration
+     * 17. Gemini configuration
      * ---------------------------------------------------------
      */
 
-    const ollamaUrl =
-      process.env.OLLAMA_URL ||
-      "http://127.0.0.1:11434";
+    const geminiApiKey =
+      process.env.GEMINI_API_KEY;
 
-    const ollamaModel =
-      process.env.OLLAMA_MODEL ||
-      "llama3.2:1b";
+    if (!geminiApiKey) {
+      console.error(
+        "GEMINI_API_KEY is missing."
+      );
 
-    /*
-     * In production, localhost is not a valid remote AI server.
-     */
-
-    if (
-      process.env.NODE_ENV ===
-        "production" &&
-      !process.env.OLLAMA_URL
-    ) {
       return NextResponse.json(
         {
           error:
-            "Chamber AI is not configured on the deployed server.",
+            "Chamber AI is not configured on the server.",
           code:
             "AI_SERVICE_NOT_CONFIGURED",
         },
-        { status: 503 }
+        {
+          status: 503,
+          headers: {
+            "Cache-Control":
+              "no-store",
+          },
+        }
       );
     }
 
     /*
+     * Create the Gemini client.
+     *
+     * The API key remains server-side.
+     * It is never sent to the browser.
+     */
+
+    const ai =
+      new GoogleGenAI({
+        apiKey:
+          geminiApiKey,
+      });
+
+    /*
      * ---------------------------------------------------------
-     * 18. Call Ollama
+     * 18. Call Gemini
      * ---------------------------------------------------------
      */
 
-    const controller =
-      new AbortController();
-
-    const timeout =
-      setTimeout(
-        () =>
-          controller.abort(),
-        OLLAMA_TIMEOUT_MS
-      );
-
-    let ollamaResponse: Response;
+    let geminiResponse;
 
     try {
-      ollamaResponse =
-        await fetch(
-          `${ollamaUrl}/api/generate`,
-          {
-            method: "POST",
+      let timeoutId:
+        ReturnType<
+          typeof setTimeout
+        >;
 
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-
-            body: JSON.stringify({
-              model: ollamaModel,
-              prompt: systemPrompt,
-
-              /*
-               * Non-streaming is retained for now.
-               *
-               * Streaming can be added later as a separate
-               * UI/performance feature.
-               */
-              stream: false,
-
-              /*
-               * Keep the model loaded between requests.
-               * This reduces repeated model-loading delays.
-               */
-              keep_alive:
-                OLLAMA_KEEP_ALIVE,
-
-              /*
-               * Lower temperature improves consistency
-               * for Chamber-specific factual answers.
-               */
-              options: {
-                temperature:
-                  OLLAMA_TEMPERATURE,
-
-                /*
-                 * Prevent unnecessarily long answers.
-                 */
-                num_predict:
-                  OLLAMA_NUM_PREDICT,
-              },
-            }),
-
-            signal:
-              controller.signal,
+      const timeoutPromise =
+        new Promise<never>(
+          (_, reject) => {
+            timeoutId =
+              setTimeout(
+                () => {
+                  reject(
+                    new Error(
+                      "AI_TIMEOUT"
+                    )
+                  );
+                },
+                GEMINI_TIMEOUT_MS
+              );
           }
         );
-    } catch (error) {
-      clearTimeout(timeout);
 
+      const responsePromise =
+        ai.models.generateContent({
+          model:
+            GEMINI_MODEL,
+
+          contents:
+            systemPrompt,
+
+          config: {
+            temperature:
+              GEMINI_TEMPERATURE,
+
+            maxOutputTokens:
+              GEMINI_MAX_OUTPUT_TOKENS,
+          },
+        });
+
+      try {
+        geminiResponse =
+          await Promise.race([
+            responsePromise,
+            timeoutPromise,
+          ]);
+      } finally {
+        clearTimeout(
+          timeoutId!
+        );
+      }
+    } catch (error) {
       console.error(
-        "Ollama connection error:",
+        "Gemini request error:",
         error
       );
 
       if (
         error instanceof Error &&
-        error.name ===
-          "AbortError"
+        error.message ===
+          "AI_TIMEOUT"
       ) {
         return NextResponse.json(
           {
@@ -1519,121 +1513,78 @@ Now answer the user's question accurately using the Chamber context above.
             code:
               "AI_TIMEOUT",
           },
-          { status: 504 }
+          {
+            status: 504,
+            headers: {
+              "Cache-Control":
+                "no-store",
+            },
+          }
         );
       }
 
-      return NextResponse.json(
-        {
-          error:
-            "Could not connect to Chamber AI.",
-          code:
-            "AI_CONNECTION_FAILED",
-        },
-        { status: 503 }
-      );
-    }
+      /*
+       * Try to identify model-not-found errors.
+       */
 
-    clearTimeout(timeout);
-
-    /*
-     * ---------------------------------------------------------
-     * 19. Handle Ollama HTTP errors
-     * ---------------------------------------------------------
-     */
-
-    const responseText =
-      await ollamaResponse.text();
-
-    if (
-      !ollamaResponse.ok
-    ) {
-      console.error(
-        "Ollama HTTP error:",
-        ollamaResponse.status,
-        responseText
-      );
+      const errorText =
+        error instanceof Error
+          ? error.message
+          : String(error);
 
       if (
-        ollamaResponse.status ===
-        404
+        errorText
+          .toLowerCase()
+          .includes("not found") ||
+        errorText
+          .toLowerCase()
+          .includes("404")
       ) {
         return NextResponse.json(
           {
             error:
-              `The AI model "${ollamaModel}" was not found on the AI server.`,
+              `The AI model "${GEMINI_MODEL}" could not be found.`,
             code:
               "AI_MODEL_NOT_FOUND",
           },
-          { status: 503 }
+          {
+            status: 503,
+            headers: {
+              "Cache-Control":
+                "no-store",
+            },
+          }
         );
       }
 
       return NextResponse.json(
         {
           error:
-            "Chamber AI returned an error.",
+            "Chamber AI returned an error. Please try again.",
           code:
             "AI_PROVIDER_ERROR",
         },
-        { status: 502 }
+        {
+          status: 502,
+          headers: {
+            "Cache-Control":
+              "no-store",
+          },
+        }
       );
     }
 
     /*
      * ---------------------------------------------------------
-     * 20. Parse Ollama response
+     * 19. Extract Gemini response
      * ---------------------------------------------------------
      */
 
-    let ollamaData: OllamaResponse;
-
-    try {
-      ollamaData =
-        JSON.parse(
-          responseText
-        );
-    } catch (error) {
-      console.error(
-        "Invalid Ollama JSON:",
-        error
-      );
-
-      return NextResponse.json(
-        {
-          error:
-            "Chamber AI returned an invalid response.",
-          code:
-            "AI_INVALID_RESPONSE",
-        },
-        { status: 502 }
-      );
-    }
-
-    if (
-      ollamaData.error
-    ) {
-      console.error(
-        "Ollama internal error:",
-        ollamaData.error
-      );
-
-      return NextResponse.json(
-        {
-          error:
-            ollamaData.error,
-          code:
-            "AI_PROVIDER_ERROR",
-        },
-        { status: 502 }
-      );
-    }
-
     const reply =
-      typeof ollamaData.response ===
+      typeof geminiResponse.text ===
       "string"
         ? cleanAIResponse(
-            ollamaData.response
+            geminiResponse.text
           )
         : "";
 
@@ -1645,13 +1596,19 @@ Now answer the user's question accurately using the Chamber context above.
           code:
             "AI_EMPTY_RESPONSE",
         },
-        { status: 502 }
+        {
+          status: 502,
+          headers: {
+            "Cache-Control":
+              "no-store",
+          },
+        }
       );
     }
 
     /*
      * ---------------------------------------------------------
-     * 21. Return response
+     * 20. Return response
      * ---------------------------------------------------------
      */
 
@@ -1679,7 +1636,13 @@ Now answer the user's question accurately using the Chamber context above.
         code:
           "AI_INTERNAL_ERROR",
       },
-      { status: 500 }
+      {
+        status: 500,
+        headers: {
+          "Cache-Control":
+            "no-store",
+        },
+      }
     );
   }
 }
