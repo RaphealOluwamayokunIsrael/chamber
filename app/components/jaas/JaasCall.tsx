@@ -19,6 +19,7 @@ export default function JaasCall({
   const [error, setError] = useState("");
 
   const [currentUserId, setCurrentUserId] = useState("");
+  const [displayName, setDisplayName] = useState("");
 
   const appId =
     "vpaas-magic-cookie-f78222245d8e45b8b47402dd57660eac";
@@ -26,26 +27,93 @@ export default function JaasCall({
   const roomName = `${appId}/${chamberId}`;
 
   /*
-   * Get the currently logged-in user.
+   * Get the currently logged-in user
+   * and resolve their real Chamber name.
    */
   useEffect(() => {
     async function getCurrentUser() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
 
-      if (user) {
+        if (!user) {
+          setDisplayName(participantName);
+          return;
+        }
+
         setCurrentUserId(user.id);
+
+        /*
+         * Get the user's real name from the profiles table.
+         */
+        const { data: profile, error: profileError } =
+          await supabase
+            .from("profiles")
+            .select("full_name")
+            .eq("id", user.id)
+            .maybeSingle();
+
+        if (profileError) {
+          console.error(
+            "PROFILE NAME ERROR:",
+            profileError
+          );
+        }
+
+        if (profile?.full_name?.trim()) {
+          setDisplayName(profile.full_name.trim());
+          return;
+        }
+
+        /*
+         * Fallback to Supabase auth metadata.
+         */
+        const metadataName =
+          user.user_metadata?.full_name ||
+          user.user_metadata?.name;
+
+        if (
+          typeof metadataName === "string" &&
+          metadataName.trim()
+        ) {
+          setDisplayName(metadataName.trim());
+          return;
+        }
+
+        /*
+         * Final fallback.
+         */
+        if (user.email) {
+          setDisplayName(
+            user.email.split("@")[0]
+          );
+          return;
+        }
+
+        setDisplayName(participantName);
+      } catch (error) {
+        console.error(
+          "GET CURRENT USER ERROR:",
+          error
+        );
+
+        setDisplayName(participantName);
       }
     }
 
     getCurrentUser();
-  }, []);
+  }, [participantName]);
 
   /*
-   * Generate the JaaS token.
+   * Generate the JaaS token only after
+   * the participant name has been resolved.
    */
   useEffect(() => {
+    if (!displayName) {
+      return;
+    }
+
     let cancelled = false;
 
     async function getToken() {
@@ -59,7 +127,7 @@ export default function JaasCall({
           },
           body: JSON.stringify({
             roomName,
-            participantName,
+            participantName: displayName,
           }),
         });
 
@@ -69,7 +137,8 @@ export default function JaasCall({
 
         if (!response.ok) {
           throw new Error(
-            result?.error || "Unable to create JaaS token."
+            result?.error ||
+              "Unable to create JaaS token."
           );
         }
 
@@ -83,7 +152,10 @@ export default function JaasCall({
           setToken(result.token);
         }
       } catch (err) {
-        console.error("JAAS TOKEN ERROR:", err);
+        console.error(
+          "JAAS TOKEN ERROR:",
+          err
+        );
 
         if (!cancelled) {
           setError(
@@ -100,7 +172,7 @@ export default function JaasCall({
     return () => {
       cancelled = true;
     };
-  }, [roomName, participantName]);
+  }, [roomName, displayName]);
 
   /*
    * End the Chamber call in Supabase.
@@ -276,9 +348,9 @@ export default function JaasCall({
           SHOW_BRAND_WATERMARK: false,
         }}
         userInfo={{
-          displayName: participantName,
+          displayName: displayName,
 
-          email: `${participantName
+          email: `${displayName
             .toLowerCase()
             .replace(/\s+/g, ".")}@chamber.local`,
         }}
