@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { GoogleGenAI } from "@google/genai";
+import Groq from "groq-sdk";
 
 type ConversationMessage = {
   role: "user" | "assistant";
@@ -36,24 +36,21 @@ type AIActionIntent =
 
 const MAX_MESSAGE_LENGTH = 4000;
 const MAX_CONVERSATION_MESSAGES = 20;
-
 const MAX_SEARCH_TERMS = 8;
 const MAX_RECENT_MESSAGES = 80;
 const MAX_RELEVANT_MESSAGES_PER_TERM = 15;
 const MAX_TOTAL_MESSAGES = 150;
-
 const MAX_ANNOUNCEMENTS = 20;
 const MAX_EVENTS = 20;
 const MAX_POLLS = 20;
 const MAX_FILES = 40;
 const MAX_MEMBERS = 150;
 
-const GEMINI_TIMEOUT_MS = 45000;
-const GEMINI_MAX_RETRIES = 3;
-
-const GEMINI_TEMPERATURE = 0.2;
-const GEMINI_MAX_OUTPUT_TOKENS = 700;
-const GEMINI_MODEL = "gemini-3.7-flash";
+const AI_TIMEOUT_MS = 45000;
+const AI_MAX_RETRIES = 3;
+const AI_TEMPERATURE = 0.2;
+const AI_MAX_OUTPUT_TOKENS = 700;
+const AI_MODEL = "openai/gpt-oss-120b";
 
 const MAX_MEMBER_CONTEXT_CHARS = 7000;
 const MAX_CHAT_CONTEXT_CHARS = 14000;
@@ -62,7 +59,6 @@ const MAX_ANNOUNCEMENT_CONTEXT_CHARS = 5500;
 const MAX_EVENT_CONTEXT_CHARS = 5000;
 const MAX_POLL_CONTEXT_CHARS = 5000;
 const MAX_FILE_CONTEXT_CHARS = 3000;
-
 const MAX_ITEM_TEXT_CHARS = 600;
 
 /*
@@ -157,10 +153,7 @@ function createSearchTerms(
     "my",
     "us",
     "do",
-    "does",
     "will",
-    "would",
-    "should",
     "may",
     "might",
   ]);
@@ -348,7 +341,6 @@ function buildChatContext(
     );
 
   const selected: string[] = [];
-
   let usedChars = 0;
 
   for (const item of combined) {
@@ -377,7 +369,6 @@ function buildChatContext(
     }
 
     selected.push(line);
-
     usedChars +=
       line.length + 1;
   }
@@ -510,7 +501,7 @@ function detectActionIntent(
 
 /*
  * ---------------------------------------------------------
- * Gemini error helpers
+ * Groq error helpers
  * ---------------------------------------------------------
  */
 
@@ -532,7 +523,8 @@ function getErrorStatus(
   const value =
     error as {
       status?: number;
-      code?: number;
+      statusCode?: number;
+      code?: number | string;
       response?: {
         status?: number;
       };
@@ -546,10 +538,10 @@ function getErrorStatus(
   }
 
   if (
-    typeof value?.code ===
+    typeof value?.statusCode ===
     "number"
   ) {
-    return value.code;
+    return value.statusCode;
   }
 
   if (
@@ -559,10 +551,17 @@ function getErrorStatus(
     return value.response.status;
   }
 
+  if (
+    typeof value?.code ===
+    "number"
+  ) {
+    return value.code;
+  }
+
   return null;
 }
 
-function isRetryableGeminiError(
+function isRetryableAIError(
   error: unknown
 ): boolean {
   const status =
@@ -586,6 +585,9 @@ function isRetryableGeminiError(
 
   return (
     text.includes(
+      "rate limit"
+    ) ||
+    text.includes(
       "resource exhausted"
     ) ||
     text.includes(
@@ -601,10 +603,10 @@ function isRetryableGeminiError(
       "timeout"
     ) ||
     text.includes(
-      "503"
+      "429"
     ) ||
     text.includes(
-      "429"
+      "503"
     )
   );
 }
@@ -623,20 +625,20 @@ function sleep(
 
 /*
  * ---------------------------------------------------------
- * Gemini request with timeout + exponential backoff.
+ * Groq request with timeout + exponential backoff.
  * ---------------------------------------------------------
  */
 
-async function generateGeminiResponse(
-  ai: GoogleGenAI,
-  prompt: string
+async function generateAIResponse(
+  ai: Groq,
+  systemPrompt: string
 ) {
   let lastError: unknown =
     null;
 
   for (
     let attempt = 0;
-    attempt <= GEMINI_MAX_RETRIES;
+    attempt <= AI_MAX_RETRIES;
     attempt++
   ) {
     try {
@@ -656,27 +658,28 @@ async function generateGeminiResponse(
                       "AI_TIMEOUT"
                     )
                   ),
-                GEMINI_TIMEOUT_MS
+                AI_TIMEOUT_MS
               );
           }
         );
 
       const responsePromise =
-        ai.models.generateContent({
-          model:
-            GEMINI_MODEL,
-
-          contents:
-            prompt,
-
-          config: {
+        ai.chat.completions.create(
+          {
+            model: AI_MODEL,
+            messages: [
+              {
+                role: "system",
+                content:
+                  systemPrompt,
+              },
+            ],
             temperature:
-              GEMINI_TEMPERATURE,
-
-            maxOutputTokens:
-              GEMINI_MAX_OUTPUT_TOKENS,
-          },
-        });
+              AI_TEMPERATURE,
+            max_completion_tokens:
+              AI_MAX_OUTPUT_TOKENS,
+          }
+        );
 
       try {
         return await Promise.race([
@@ -692,14 +695,14 @@ async function generateGeminiResponse(
       lastError = error;
 
       const retryable =
-        isRetryableGeminiError(
+        isRetryableAIError(
           error
         );
 
       if (
         !retryable ||
         attempt >=
-          GEMINI_MAX_RETRIES
+          AI_MAX_RETRIES
       ) {
         throw error;
       }
@@ -726,9 +729,9 @@ async function generateGeminiResponse(
         jitter;
 
       console.warn(
-        `Gemini transient error. Retrying attempt ${
+        `AI transient error. Retrying attempt ${
           attempt + 1
-        }/${GEMINI_MAX_RETRIES} in ${delay}ms.`
+        }/${AI_MAX_RETRIES} in ${delay}ms.`
       );
 
       await sleep(
@@ -740,7 +743,7 @@ async function generateGeminiResponse(
   throw (
     lastError ||
     new Error(
-      "Gemini request failed."
+      "AI request failed."
     )
   );
 }
@@ -892,8 +895,8 @@ export async function POST(
       process.env
         .NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-    const geminiApiKey =
-      process.env.GEMINI_API_KEY;
+    const groqApiKey =
+      process.env.GROQ_API_KEY;
 
     if (
       !supabaseUrl ||
@@ -916,9 +919,9 @@ export async function POST(
       );
     }
 
-    if (!geminiApiKey) {
+    if (!groqApiKey) {
       console.error(
-        "GEMINI_API_KEY is missing."
+        "GROQ_API_KEY is missing."
       );
 
       return NextResponse.json(
@@ -1679,33 +1682,40 @@ export async function POST(
       const lines =
         selectWithBudget(
           announcements,
+
           (item) =>
             [
               `Title: ${limitText(
                 item.title,
                 250
               )}`,
+
               `Content: ${limitText(
                 item.content,
                 MAX_ITEM_TEXT_CHARS
               )}`,
+
               `Type: ${limitText(
                 item.announcement_type,
                 100
               )}`,
+
               `Created: ${
                 item.created_at
               }`,
             ].join("\n"),
+
           (item) =>
             [
               item.title,
               item.content,
               item.announcement_type,
             ].join(" "),
+
           createSearchTerms(
             message
           ),
+
           MAX_ANNOUNCEMENT_CONTEXT_CHARS
         );
 
@@ -1730,33 +1740,40 @@ export async function POST(
       const lines =
         selectWithBudget(
           events,
+
           (item) =>
             [
               `Title: ${limitText(
                 item.title,
                 250
               )}`,
+
               `Description: ${limitText(
                 item.description,
                 MAX_ITEM_TEXT_CHARS
               )}`,
+
               `Date: ${
                 item.event_date
               }`,
+
               `Location: ${limitText(
                 item.location,
                 250
               )}`,
             ].join("\n"),
+
           (item) =>
             [
               item.title,
               item.description,
               item.location,
             ].join(" "),
+
           createSearchTerms(
             message
           ),
+
           MAX_EVENT_CONTEXT_CHARS
         );
 
@@ -1781,12 +1798,14 @@ export async function POST(
       const lines =
         selectWithBudget(
           polls,
+
           (item) =>
             [
               `Question: ${limitText(
                 item.question,
                 400
               )}`,
+
               `Options: ${
                 Array.isArray(
                   item.options
@@ -1809,14 +1828,17 @@ export async function POST(
                       500
                     )
               }`,
+
               `Created: ${
                 item.created_at
               }`,
+
               `Expires: ${
                 item.expires_at ||
                 "No expiry"
               }`,
             ].join("\n"),
+
           (item) =>
             [
               item.question,
@@ -1824,9 +1846,11 @@ export async function POST(
                 item.options
               ),
             ].join(" "),
+
           createSearchTerms(
             message
           ),
+
           MAX_POLL_CONTEXT_CHARS
         );
 
@@ -1851,32 +1875,39 @@ export async function POST(
       const lines =
         selectWithBudget(
           files,
+
           (item) =>
             [
               `Name: ${limitText(
                 item.file_name,
                 300
               )}`,
+
               `Type: ${limitText(
                 item.file_type,
                 100
               )}`,
+
               `Size: ${
                 item.file_size ??
                 "Unknown"
               } bytes`,
+
               `Uploaded: ${
                 item.created_at
               }`,
             ].join("\n"),
+
           (item) =>
             [
               item.file_name,
               item.file_type,
             ].join(" "),
+
           createSearchTerms(
             message
           ),
+
           MAX_FILE_CONTEXT_CHARS
         );
 
@@ -1894,8 +1925,7 @@ export async function POST(
      * -------------------------------------------------------
      */
 
-    let actionInstruction =
-      `
+    let actionInstruction = `
 No action has been requested.
 
 Answer the user normally.
@@ -1904,14 +1934,15 @@ Answer the user normally.
     if (
       actionIntent !== "none"
     ) {
-      actionInstruction =
-        `
+      actionInstruction = `
 The user appears to be requesting an action.
 
 Detected action:
+
 ${actionIntent}
 
 IMPORTANT:
+
 - Do NOT claim that the action has been completed.
 - Do NOT pretend that a database record was created.
 - Do NOT invent a successful operation.
@@ -1929,6 +1960,7 @@ IMPORTANT:
      */
 
     const systemPrompt = `
+
 You are Chamber AI.
 
 You are an intelligent assistant embedded inside the Chamber application.
@@ -1936,14 +1968,23 @@ You are an intelligent assistant embedded inside the Chamber application.
 Your primary responsibilities are:
 
 1. Answer general questions intelligently.
+
 2. Understand the current authenticated user's identity.
+
 3. Understand the current Chamber when Chamber information is relevant.
+
 4. Retrieve and reason over Chamber information accurately.
+
 5. Help users understand conversations, announcements, events, polls, members and available file metadata.
+
 6. Help users understand responsibilities and activities when sufficient Chamber information exists.
+
 7. Never invent Chamber information.
+
 8. Never confuse one Chamber with another.
+
 9. Never expose secrets or authentication information.
+
 10. Never claim an action was completed when your application has not actually executed it.
 
 ==================================================
@@ -1951,15 +1992,18 @@ CURRENT AUTHENTICATED USER
 ==================================================
 
 Name:
+
 ${limitText(
   currentUserName,
   200
 )}
 
 User ID:
+
 ${user.id}
 
 Chamber role:
+
 ${limitText(
   currentUserRole,
   100
@@ -1970,33 +2014,39 @@ CURRENT CHAMBER
 ==================================================
 
 Chamber ID:
+
 ${chamber.id}
 
 Chamber name:
+
 ${limitText(
   chamber.chamber_name,
   300
 )}
 
 Description:
+
 ${limitText(
   chamber.description,
   1000
 )}
 
 Organization:
+
 ${limitText(
   chamber.organization,
   300
 )}
 
 Division:
+
 ${limitText(
   chamber.division,
   300
 )}
 
 Category:
+
 ${limitText(
   chamber.category,
   200
@@ -2025,8 +2075,6 @@ Do NOT unnecessarily say:
 "within this Chamber"
 
 "according to this Chamber"
-
-"within the perfume Chamber"
 
 unless the user actually asked a Chamber-related question.
 
@@ -2184,6 +2232,7 @@ FILES
 ==================================================
 
 The following are metadata only.
+
 Do not pretend to know their contents.
 
 ${fileContext}
@@ -2211,27 +2260,27 @@ Now answer the user.
 
     /*
      * -------------------------------------------------------
-     * 24. Gemini
+     * 24. Groq AI
      * -------------------------------------------------------
      */
 
     const ai =
-      new GoogleGenAI({
+      new Groq({
         apiKey:
-          geminiApiKey,
+          groqApiKey,
       });
 
-    let geminiResponse;
+    let aiResponse;
 
     try {
-      geminiResponse =
-        await generateGeminiResponse(
+      aiResponse =
+        await generateAIResponse(
           ai,
           systemPrompt
         );
     } catch (error) {
       console.error(
-        "Gemini request failed after retries:",
+        "Groq request failed after retries:",
         error
       );
 
@@ -2268,20 +2317,41 @@ Now answer the user.
 
       if (
         errorText.includes(
-          "not found"
-        ) ||
-        errorText.includes(
           "model"
         ) &&
+        (
+          errorText.includes(
+            "not found"
+          ) ||
           errorText.includes(
             "404"
-          ) ||
+          )
+        )
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              `The AI model "${AI_MODEL}" could not be found.`,
+            code:
+              "AI_MODEL_NOT_FOUND",
+          },
+          {
+            status: 503,
+            headers: {
+              "Cache-Control":
+                "no-store",
+            },
+          }
+        );
+      }
+
+      if (
         status === 404
       ) {
         return NextResponse.json(
           {
             error:
-              `The AI model "${GEMINI_MODEL}" could not be found.`,
+              `The AI model "${AI_MODEL}" could not be found.`,
             code:
               "AI_MODEL_NOT_FOUND",
           },
@@ -2298,7 +2368,7 @@ Now answer the user.
       if (
         status === 429 ||
         errorText.includes(
-          "resource exhausted"
+          "rate limit"
         ) ||
         errorText.includes(
           "429"
@@ -2325,11 +2395,15 @@ Now answer the user.
 
       if (
         status === 503 ||
+        status === 500 ||
         errorText.includes(
           "503"
         ) ||
         errorText.includes(
-          "unavailable"
+          "temporarily unavailable"
+        ) ||
+        errorText.includes(
+          "service unavailable"
         )
       ) {
         return NextResponse.json(
@@ -2356,6 +2430,9 @@ Now answer the user.
         status === 403 ||
         errorText.includes(
           "api key"
+        ) ||
+        errorText.includes(
+          "unauthorized"
         )
       ) {
         return NextResponse.json(
@@ -2399,10 +2476,16 @@ Now answer the user.
      */
 
     const reply =
-      typeof geminiResponse.text ===
+      typeof aiResponse
+        ?.choices?.[0]
+        ?.message
+        ?.content ===
       "string"
         ? cleanAIResponse(
-            geminiResponse.text
+            aiResponse
+              .choices[0]
+              .message
+              .content
           )
         : "";
 
@@ -2427,12 +2510,8 @@ Now answer the user.
     /*
      * -------------------------------------------------------
      * 26. Return response
-     * -------------------------------------------------------
      *
      * actionIntent is returned as metadata only.
-     *
-     * The frontend can later use this to display an action
-     * confirmation UI.
      *
      * No database action is executed here.
      * -------------------------------------------------------
@@ -2444,9 +2523,13 @@ Now answer the user.
 
         meta: {
           chamberId,
-          userId: user.id,
+
+          userId:
+            user.id,
+
           userName:
             currentUserName,
+
           userRole:
             currentUserRole,
 
