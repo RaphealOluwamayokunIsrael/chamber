@@ -12,7 +12,18 @@ import {
   UserCircle2,
   LogOut,
   ArrowRight,
+  Clock3,
+  CalendarDays,
+  Users,
+  Plus,
 } from "lucide-react";
+
+type Chamber = {
+  id: string;
+  name: string;
+  description: string | null;
+  created_at?: string;
+};
 
 export default function WelcomePage() {
   const router = useRouter();
@@ -20,24 +31,21 @@ export default function WelcomePage() {
   const [firstName, setFirstName] = useState("User");
   const [greeting, setGreeting] = useState("Good Morning");
 
+  const [currentTime, setCurrentTime] = useState("");
+  const [currentDate, setCurrentDate] = useState("");
+
+  const [chambers, setChambers] = useState<Chamber[]>([]);
+  const [loadingChambers, setLoadingChambers] = useState(true);
+
+  // =========================
+  // LIVE DATE & TIME
+  // =========================
+
   useEffect(() => {
-    async function loadUser() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+    function updateDateTime() {
+      const now = new Date();
 
-      if (!user) return;
-
-      const fullName =
-        user.user_metadata?.full_name ||
-        user.user_metadata?.fullName ||
-        "User";
-
-      // Show only first name
-      setFirstName(fullName.split(" ")[0]);
-
-      // Greeting based on time
-      const hour = new Date().getHours();
+      const hour = now.getHours();
 
       if (hour < 12) {
         setGreeting("Good Morning");
@@ -46,10 +54,121 @@ export default function WelcomePage() {
       } else {
         setGreeting("Good Evening");
       }
+
+      setCurrentTime(
+        now.toLocaleTimeString("en-NG", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: true,
+        })
+      );
+
+      setCurrentDate(
+        now.toLocaleDateString("en-NG", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        })
+      );
     }
 
-    loadUser();
+    updateDateTime();
+
+    const interval = setInterval(updateDateTime, 1000);
+
+    return () => clearInterval(interval);
   }, []);
+
+  // =========================
+  // LOAD USER + CHAMBERS
+  // =========================
+
+  useEffect(() => {
+    async function loadUserAndChambers() {
+      setLoadingChambers(true);
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+
+      const fullName =
+        user.user_metadata?.full_name ||
+        user.user_metadata?.fullName ||
+        "User";
+
+      setFirstName(fullName.split(" ")[0]);
+
+      // =========================
+      // GET USER'S CHAMBER MEMBERSHIPS
+      // =========================
+
+      const { data: memberships, error: membershipError } =
+        await supabase
+          .from("members")
+          .select("chamber_id")
+          .eq("user_id", user.id);
+
+      if (membershipError) {
+        console.error(
+          "Error loading Chamber memberships:",
+          membershipError
+        );
+
+        setChambers([]);
+        setLoadingChambers(false);
+        return;
+      }
+
+      const chamberIds =
+        memberships?.map((membership) => membership.chamber_id) || [];
+
+      if (chamberIds.length === 0) {
+        setChambers([]);
+        setLoadingChambers(false);
+        return;
+      }
+
+      // =========================
+      // GET CHAMBERS
+      // =========================
+
+      const { data: chamberData, error: chamberError } =
+        await supabase
+          .from("chambers")
+          .select("id, name, description, created_at")
+          .in("id", chamberIds)
+          .order("created_at", { ascending: false });
+
+      if (chamberError) {
+        console.error(
+          "Error loading Chambers:",
+          chamberError
+        );
+
+        setChambers([]);
+        setLoadingChambers(false);
+        return;
+      }
+
+      // Show only the four most recent Chambers
+      setChambers((chamberData || []).slice(0, 4));
+
+      setLoadingChambers(false);
+    }
+
+    loadUserAndChambers();
+  }, [router]);
+
+  // =========================
+  // SIGN OUT
+  // =========================
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -59,11 +178,11 @@ export default function WelcomePage() {
   return (
     <main className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-100 dark:from-slate-950 dark:via-slate-900 dark:to-gray-950">
 
-      {/* Background Glow */}
+      {/* ================= BACKGROUND GLOW ================= */}
 
-      <div className="absolute -top-40 -right-40 h-[420px] w-[420px] rounded-full bg-blue-500/20 blur-3xl"></div>
+      <div className="absolute -top-40 -right-40 h-[420px] w-[420px] rounded-full bg-blue-500/20 blur-3xl" />
 
-      <div className="absolute bottom-0 -left-40 h-[420px] w-[420px] rounded-full bg-indigo-500/20 blur-3xl"></div>
+      <div className="absolute bottom-0 -left-40 h-[420px] w-[420px] rounded-full bg-indigo-500/20 blur-3xl" />
 
       {/* ================= HEADER ================= */}
 
@@ -121,16 +240,52 @@ export default function WelcomePage() {
 
       <div className="relative mx-auto max-w-7xl px-8 py-14">
 
-        <div className="mb-12">
+        {/* ================= WELCOME + CLOCK ================= */}
 
-          <h2 className="text-5xl font-extrabold text-gray-900 dark:text-white">
-            {greeting}, {firstName} 👋
-          </h2>
+        <div className="mb-12 grid gap-8 lg:grid-cols-[1fr_360px] lg:items-center">
 
-          <p className="mt-4 max-w-2xl text-xl text-gray-600 dark:text-gray-400">
-            Manage your organizations, collaborate securely and build amazing
-            communities with Chamber.
-          </p>
+          <div>
+
+            <h2 className="text-5xl font-extrabold text-gray-900 dark:text-white">
+              {greeting}, {firstName} 👋
+            </h2>
+
+            <p className="mt-4 max-w-2xl text-xl text-gray-600 dark:text-gray-400">
+              Manage your organizations, collaborate securely and build
+              amazing communities with Chamber.
+            </p>
+
+          </div>
+
+          {/* ================= DATE & TIME ================= */}
+
+          <div className="rounded-3xl border border-white/40 bg-white/80 p-7 shadow-xl backdrop-blur-xl dark:border-gray-700 dark:bg-gray-900/80">
+
+            <div className="flex items-center gap-3 text-blue-600">
+
+              <Clock3 className="h-6 w-6" />
+
+              <span className="font-semibold">
+                Current Time
+              </span>
+
+            </div>
+
+            <p className="mt-3 text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white">
+              {currentTime}
+            </p>
+
+            <div className="mt-4 flex items-center gap-2 text-gray-600 dark:text-gray-400">
+
+              <CalendarDays className="h-5 w-5" />
+
+              <span className="text-sm">
+                {currentDate}
+              </span>
+
+            </div>
+
+          </div>
 
         </div>
 
@@ -142,7 +297,7 @@ export default function WelcomePage() {
 
           <Link href="/create">
 
-            <div className="group cursor-pointer rounded-3xl border border-white/40 bg-white/80 p-8 shadow-xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-2 hover:border-blue-300 hover:shadow-2xl dark:border-gray-700 dark:bg-gray-900/80">
+            <div className="group h-full cursor-pointer rounded-3xl border border-white/40 bg-white/80 p-8 shadow-xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-2 hover:border-blue-300 hover:shadow-2xl dark:border-gray-700 dark:bg-gray-900/80">
 
               <Building2 className="mb-6 h-14 w-14 text-blue-600 transition group-hover:scale-110" />
 
@@ -167,7 +322,7 @@ export default function WelcomePage() {
 
           <Link href="/join">
 
-            <div className="group cursor-pointer rounded-3xl border border-white/40 bg-white/80 p-8 shadow-xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-2 hover:border-emerald-300 hover:shadow-2xl dark:border-gray-700 dark:bg-gray-900/80">
+            <div className="group h-full cursor-pointer rounded-3xl border border-white/40 bg-white/80 p-8 shadow-xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-2 hover:border-emerald-300 hover:shadow-2xl dark:border-gray-700 dark:bg-gray-900/80">
 
               <KeyRound className="mb-6 h-14 w-14 text-emerald-600 transition group-hover:scale-110" />
 
@@ -187,11 +342,12 @@ export default function WelcomePage() {
             </div>
 
           </Link>
-                    {/* BROWSE */}
+
+          {/* BROWSE */}
 
           <Link href="/browse">
 
-            <div className="group cursor-pointer rounded-3xl border border-white/40 bg-white/80 p-8 shadow-xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-2 hover:border-indigo-300 hover:shadow-2xl dark:border-gray-700 dark:bg-gray-900/80">
+            <div className="group h-full cursor-pointer rounded-3xl border border-white/40 bg-white/80 p-8 shadow-xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-2 hover:border-indigo-300 hover:shadow-2xl dark:border-gray-700 dark:bg-gray-900/80">
 
               <Globe2 className="mb-6 h-14 w-14 text-indigo-600 transition group-hover:scale-110" />
 
@@ -220,32 +376,133 @@ export default function WelcomePage() {
 
           <div className="mb-6 flex items-center justify-between">
 
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
-              My Chambers
-            </h2>
+            <div>
+
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
+                My Chambers
+              </h2>
+
+              <p className="mt-1 text-gray-600 dark:text-gray-400">
+                Your organizations and collaboration spaces
+              </p>
+
+            </div>
 
             <Link
               href="/create"
-              className="rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:bg-blue-700"
+              className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:bg-blue-700"
             >
-              + Create Chamber
+              <Plus size={18} />
+              Create Chamber
             </Link>
 
           </div>
 
-          <div className="rounded-3xl border border-white/40 bg-white/80 p-10 shadow-xl backdrop-blur-xl dark:border-gray-700 dark:bg-gray-900/80">
+          {/* ================= LOADING ================= */}
 
-            <Building2 className="mb-5 h-14 w-14 text-blue-500" />
+          {loadingChambers ? (
 
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-              No Chambers Yet
-            </h3>
+            <div className="rounded-3xl border border-white/40 bg-white/80 p-10 text-center shadow-xl backdrop-blur-xl dark:border-gray-700 dark:bg-gray-900/80">
 
-            <p className="mt-3 text-lg text-gray-600 dark:text-gray-400">
-              Create your first Chamber or join an existing one to start collaborating.
-            </p>
+              <p className="text-lg text-gray-500 dark:text-gray-400">
+                Loading your Chambers...
+              </p>
 
-          </div>
+            </div>
+
+          ) : chambers.length === 0 ? (
+
+            /* ================= NO CHAMBERS ================= */
+
+            <div className="rounded-3xl border border-white/40 bg-white/80 p-10 text-center shadow-xl backdrop-blur-xl dark:border-gray-700 dark:bg-gray-900/80">
+
+              <Building2 className="mx-auto mb-5 h-14 w-14 text-blue-500" />
+
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                No Chambers Yet
+              </h3>
+
+              <p className="mx-auto mt-3 max-w-xl text-lg text-gray-600 dark:text-gray-400">
+                Create your first Chamber or join an existing one to start
+                collaborating.
+              </p>
+
+              <div className="mt-7 flex justify-center gap-4">
+
+                <Link
+                  href="/create"
+                  className="rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white transition hover:bg-blue-700"
+                >
+                  Create Chamber
+                </Link>
+
+                <Link
+                  href="/join"
+                  className="rounded-xl border border-gray-300 px-6 py-3 font-semibold text-gray-700 transition hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+                >
+                  Join Chamber
+                </Link>
+
+              </div>
+
+            </div>
+
+          ) : (
+
+            /* ================= FOUR CHAMBERS ================= */
+
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+
+              {chambers.map((chamber) => (
+
+                <Link
+                  key={chamber.id}
+                  href={`/chamber/${chamber.id}`}
+                  className="group"
+                >
+
+                  <div className="h-full rounded-3xl border border-white/40 bg-white/80 p-6 shadow-xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-2 hover:border-blue-300 hover:shadow-2xl dark:border-gray-700 dark:bg-gray-900/80">
+
+                    {/* Chamber Icon */}
+
+                    <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-100 dark:bg-blue-900/30">
+
+                      <Building2 className="h-7 w-7 text-blue-600 dark:text-blue-400" />
+
+                    </div>
+
+                    {/* Name */}
+
+                    <h3 className="line-clamp-2 text-xl font-bold text-gray-900 dark:text-white">
+                      {chamber.name}
+                    </h3>
+
+                    {/* Description */}
+
+                    <p className="mt-3 line-clamp-3 text-sm leading-6 text-gray-600 dark:text-gray-400">
+                      {chamber.description ||
+                        "A secure collaboration space on Chamber."}
+                    </p>
+
+                    {/* Open */}
+
+                    <div className="mt-6 flex items-center font-semibold text-blue-600">
+
+                      Open Chamber
+
+                      <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+
+                    </div>
+
+                  </div>
+
+                </Link>
+
+              ))}
+
+            </div>
+
+          )}
 
         </section>
 
@@ -260,7 +517,7 @@ export default function WelcomePage() {
           <div className="rounded-3xl border border-white/40 bg-white/80 p-10 shadow-xl backdrop-blur-xl dark:border-gray-700 dark:bg-gray-900/80">
 
             <p className="text-lg text-gray-500 dark:text-gray-400">
-              Nothing to show yet. Activity from your Chambers will appear here.
+              Activity from your Chambers will appear here.
             </p>
 
           </div>
@@ -277,6 +534,8 @@ export default function WelcomePage() {
 
           <div className="grid gap-10 md:grid-cols-3">
 
+            {/* RIO LAB */}
+
             <div>
 
               <h2 className="text-3xl font-extrabold tracking-widest text-gray-900 dark:text-white">
@@ -289,6 +548,8 @@ export default function WelcomePage() {
               </p>
 
             </div>
+
+            {/* QUICK LINKS */}
 
             <div>
 
@@ -323,6 +584,8 @@ export default function WelcomePage() {
 
             </div>
 
+            {/* DEVELOPERS */}
+
             <div>
 
               <h3 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -330,7 +593,8 @@ export default function WelcomePage() {
               </h3>
 
               <p className="mt-4 text-gray-600 dark:text-gray-400">
-                Learn more about RIO LAB, our mission, vision and future software products.
+                Learn more about RIO LAB, our mission, vision and future
+                software products.
               </p>
 
               <Link
