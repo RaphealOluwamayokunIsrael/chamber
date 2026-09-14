@@ -6,13 +6,13 @@ import { supabase } from "@/lib/supabase";
 
 interface JaasCallProps {
   chamberId: string;
-  participantName?: string;
+  roomName: string;
   onLeave?: () => void;
 }
 
 export default function JaasCall({
   chamberId,
-  participantName = "Chamber User",
+  roomName,
   onLeave,
 }: JaasCallProps) {
   const [token, setToken] = useState<string | null>(null);
@@ -24,35 +24,61 @@ export default function JaasCall({
   const appId =
     "vpaas-magic-cookie-f78222245d8e45b8b47402dd57660eac";
 
-  const roomName = `${appId}/${chamberId}`;
+  /*
+   * JaaS expects the App ID before the room name.
+   *
+   * Example:
+   * vpaas-magic-cookie-.../chamber-abc-123456789
+   */
+  const jaasRoomName = `${appId}/${roomName}`;
 
   /*
    * Get the currently logged-in user
-   * and resolve their real Chamber name.
+   * and resolve their real name.
    */
   useEffect(() => {
+    let cancelled = false;
+
     async function getCurrentUser() {
       try {
         const {
           data: { user },
+          error: userError,
         } = await supabase.auth.getUser();
 
+        if (userError) {
+          console.error(
+            "GET AUTH USER ERROR:",
+            userError
+          );
+        }
+
         if (!user) {
-          setDisplayName(participantName);
+          if (!cancelled) {
+            setError(
+              "You must be signed in to join this call."
+            );
+          }
+
           return;
         }
 
-        setCurrentUserId(user.id);
+        if (!cancelled) {
+          setCurrentUserId(user.id);
+        }
 
         /*
-         * Get the user's real name from the profiles table.
+         * First choice:
+         * Get the user's real name from profiles.
          */
-        const { data: profile, error: profileError } =
-          await supabase
-            .from("profiles")
-            .select("full_name")
-            .eq("id", user.id)
-            .maybeSingle();
+        const {
+          data: profile,
+          error: profileError,
+        } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", user.id)
+          .maybeSingle();
 
         if (profileError) {
           console.error(
@@ -61,13 +87,22 @@ export default function JaasCall({
           );
         }
 
-        if (profile?.full_name?.trim()) {
-          setDisplayName(profile.full_name.trim());
+        if (
+          profile?.full_name &&
+          profile.full_name.trim()
+        ) {
+          if (!cancelled) {
+            setDisplayName(
+              profile.full_name.trim()
+            );
+          }
+
           return;
         }
 
         /*
-         * Fallback to Supabase auth metadata.
+         * Second choice:
+         * Supabase authentication metadata.
          */
         const metadataName =
           user.user_metadata?.full_name ||
@@ -77,40 +112,66 @@ export default function JaasCall({
           typeof metadataName === "string" &&
           metadataName.trim()
         ) {
-          setDisplayName(metadataName.trim());
+          if (!cancelled) {
+            setDisplayName(
+              metadataName.trim()
+            );
+          }
+
           return;
         }
 
         /*
-         * Final fallback.
+         * Third choice:
+         * Use the email username.
          */
         if (user.email) {
-          setDisplayName(
-            user.email.split("@")[0]
-          );
+          const emailName =
+            user.email.split("@")[0];
+
+          if (!cancelled) {
+            setDisplayName(emailName);
+          }
+
           return;
         }
 
-        setDisplayName(participantName);
+        /*
+         * We should almost never reach this.
+         */
+        if (!cancelled) {
+          setDisplayName("Chamber User");
+        }
       } catch (error) {
         console.error(
           "GET CURRENT USER ERROR:",
           error
         );
 
-        setDisplayName(participantName);
+        if (!cancelled) {
+          setError(
+            "Unable to identify your Chamber account."
+          );
+        }
       }
     }
 
     getCurrentUser();
-  }, [participantName]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   /*
-   * Generate the JaaS token only after
-   * the participant name has been resolved.
+   * Generate the JaaS token after we know:
+   *
+   * 1. The user's real name
+   * 2. The user's Supabase ID
+   * 3. The correct Chamber room
    */
   useEffect(() => {
-    if (!displayName) {
+    if (!displayName || !currentUserId) {
       return;
     }
 
@@ -119,21 +180,29 @@ export default function JaasCall({
     async function getToken() {
       try {
         setError("");
+        setToken(null);
 
-        const response = await fetch("/api/jaas-token", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            roomName,
-            participantName: displayName,
-          }),
-        });
+        const response = await fetch(
+          "/api/jaas-token",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              roomName: jaasRoomName,
+              participantName: displayName,
+              participantId: currentUserId,
+            }),
+          }
+        );
 
         const result = await response.json();
 
-        console.log("JAAS TOKEN RESPONSE:", result);
+        console.log(
+          "JAAS TOKEN RESPONSE:",
+          result
+        );
 
         if (!response.ok) {
           throw new Error(
@@ -172,14 +241,17 @@ export default function JaasCall({
     return () => {
       cancelled = true;
     };
-  }, [roomName, displayName]);
+  }, [
+    jaasRoomName,
+    displayName,
+    currentUserId,
+  ]);
 
   /*
    * End the Chamber call in Supabase.
    *
-   * IMPORTANT:
-   * Only the person who started the call
-   * should mark the call as ended.
+   * Only the person who originally started
+   * the call should mark it as ended.
    */
   async function endChamberCall() {
     try {
@@ -196,9 +268,6 @@ export default function JaasCall({
         currentUserId
       );
 
-      /*
-       * Find the active call started by this user.
-       */
       const {
         data: activeCall,
         error: findError,
@@ -223,11 +292,8 @@ export default function JaasCall({
       }
 
       /*
-       * There is no active call started by
-       * this user.
-       *
-       * This normally means this user is
-       * simply joining somebody else's call.
+       * If no call belongs to this user,
+       * they are simply a participant.
        */
       if (!activeCall) {
         console.log(
@@ -237,16 +303,14 @@ export default function JaasCall({
         return;
       }
 
-      /*
-       * End the call.
-       */
-      const { error: updateError } =
-        await supabase
-          .from("chamber_calls")
-          .update({
-            status: "ended",
-          })
-          .eq("id", activeCall.id);
+      const {
+        error: updateError,
+      } = await supabase
+        .from("chamber_calls")
+        .update({
+          status: "ended",
+        })
+        .eq("id", activeCall.id);
 
       if (updateError) {
         console.error(
@@ -270,7 +334,7 @@ export default function JaasCall({
   }
 
   /*
-   * JaaS is ready to close.
+   * JaaS has closed.
    */
   async function handleReadyToClose() {
     console.log(
@@ -284,11 +348,16 @@ export default function JaasCall({
     }
   }
 
+  /*
+   * Display an error.
+   */
   if (error) {
     return (
       <div className="flex min-h-[500px] items-center justify-center rounded-2xl bg-slate-950 p-8 text-center">
         <div>
-          <div className="text-5xl">⚠️</div>
+          <div className="text-5xl">
+            ⚠️
+          </div>
 
           <h2 className="mt-4 text-2xl font-bold text-white">
             Call Connection Failed
@@ -297,11 +366,23 @@ export default function JaasCall({
           <p className="mt-3 text-slate-400">
             {error}
           </p>
+
+          <button
+            type="button"
+            onClick={onLeave}
+            className="mt-6 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white transition hover:bg-blue-700"
+          >
+            Back to Chamber
+          </button>
         </div>
       </div>
     );
   }
 
+  /*
+   * Wait while the user identity
+   * and JaaS token are being prepared.
+   */
   if (!token) {
     return (
       <div className="flex min-h-[500px] items-center justify-center rounded-2xl bg-slate-950">
@@ -311,6 +392,12 @@ export default function JaasCall({
           <p className="mt-4 text-slate-400">
             Connecting to Chamber call...
           </p>
+
+          {displayName && (
+            <p className="mt-2 text-sm text-slate-500">
+              Joining as {displayName}
+            </p>
+          )}
         </div>
       </div>
     );
@@ -320,7 +407,7 @@ export default function JaasCall({
     <div className="min-h-[600px] w-full overflow-hidden rounded-2xl bg-slate-950">
       <JitsiMeeting
         domain="8x8.vc"
-        roomName={roomName}
+        roomName={jaasRoomName}
         jwt={token}
         configOverwrite={{
           startWithAudioMuted: false,
@@ -348,11 +435,17 @@ export default function JaasCall({
           SHOW_BRAND_WATERMARK: false,
         }}
         userInfo={{
+          /*
+           * This is the real name that will
+           * appear to other participants.
+           */
           displayName: displayName,
 
-          email: `${displayName
-            .toLowerCase()
-            .replace(/\s+/g, ".")}@chamber.local`,
+          /*
+           * Use the Supabase user ID as the
+           * stable identity behind the participant.
+           */
+          email: `${currentUserId}@chamber.local`,
         }}
         getIFrameRef={(iframeRef) => {
           iframeRef.style.height = "600px";

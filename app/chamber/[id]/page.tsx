@@ -342,14 +342,23 @@ export default function ChamberPage() {
     try {
       setCallLoading(true);
 
+      /*
+       * If a call is already active, join the
+       * existing Chamber call.
+       */
       if (activeCall) {
         router.push(
-          `/chamber/${chamberId}/call/${activeCall.id}`
+          `/voice/${chamberId}?room=${encodeURIComponent(
+            activeCall.room_name
+          )}`
         );
 
         return;
       }
 
+      /*
+       * Create a unique room name for this call.
+       */
       const roomName =
         `chamber-${chamberId}-${Date.now()}`;
 
@@ -382,8 +391,20 @@ export default function ChamberPage() {
 
       setActiveCall(data);
 
+      /*
+       * IMPORTANT:
+       * The actual voice page is:
+       *
+       * /voice/[chamberId]
+       *
+       * NOT:
+       *
+       * /chamber/[chamberId]/call/[callId]
+       */
       router.push(
-        `/chamber/${chamberId}/call/${data.id}`
+        `/voice/${chamberId}?room=${encodeURIComponent(
+          data.room_name
+        )}`
       );
     } catch (error) {
       console.error(
@@ -403,7 +424,9 @@ export default function ChamberPage() {
     if (!activeCall) return;
 
     router.push(
-      `/chamber/${chamberId}/call/${activeCall.id}`
+      `/voice/${chamberId}?room=${encodeURIComponent(
+        activeCall.room_name
+      )}`
     );
   }
 

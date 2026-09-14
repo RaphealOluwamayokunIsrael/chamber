@@ -1,14 +1,20 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import {
+  useParams,
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
 
 import JaasCall from "@/app/components/jaas/JaasCall";
 
 export default function VoicePage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const chamberId = params.chamberId as string;
+  const roomName = searchParams.get("room");
 
   function handleLeave() {
     router.push(`/chamber/${chamberId}`);
@@ -40,6 +46,32 @@ export default function VoicePage() {
     );
   }
 
+  if (!roomName) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-950 px-6">
+        <div className="text-center">
+          <div className="text-5xl">⚠️</div>
+
+          <h1 className="mt-5 text-3xl font-bold text-white">
+            Call Not Found
+          </h1>
+
+          <p className="mt-3 text-slate-400">
+            No active Chamber call was provided.
+          </p>
+
+          <button
+            type="button"
+            onClick={handleLeave}
+            className="mt-8 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white transition hover:bg-blue-700"
+          >
+            Return to Chamber
+          </button>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-6 sm:px-8">
       <div className="mx-auto max-w-6xl">
@@ -54,7 +86,7 @@ export default function VoicePage() {
             </h1>
 
             <p className="mt-1 text-sm text-slate-400">
-              Chamber ID: {chamberId}
+              Live Chamber call
             </p>
           </div>
 
@@ -69,7 +101,7 @@ export default function VoicePage() {
 
         <JaasCall
           chamberId={chamberId}
-          participantName="Chamber User"
+          roomName={roomName}
           onLeave={handleLeave}
         />
       </div>

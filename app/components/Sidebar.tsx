@@ -12,6 +12,8 @@ import {
   Menu,
   X,
 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 export type ChamberSection =
   | "chat"
@@ -36,6 +38,77 @@ export default function Sidebar({
   collapsed,
   onToggle,
 }: SidebarProps) {
+  const [userName, setUserName] = useState("Chamber User");
+  const [initial, setInitial] = useState("C");
+
+  useEffect(() => {
+    async function loadCurrentUser() {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!user) {
+          return;
+        }
+
+        let name = "";
+
+        // First try the profiles table
+        const { data: profile, error: profileError } =
+          await supabase
+            .from("profiles")
+            .select("full_name")
+            .eq("id", user.id)
+            .maybeSingle();
+
+        if (profileError) {
+          console.error(
+            "SIDEBAR PROFILE ERROR:",
+            profileError
+          );
+        }
+
+        if (profile?.full_name?.trim()) {
+          name = profile.full_name.trim();
+        }
+
+        // Then try user metadata
+        if (!name) {
+          const metadataName =
+            user.user_metadata?.full_name ||
+            user.user_metadata?.name;
+
+          if (
+            typeof metadataName === "string" &&
+            metadataName.trim()
+          ) {
+            name = metadataName.trim();
+          }
+        }
+
+        // Finally use email username
+        if (!name && user.email) {
+          name = user.email.split("@")[0];
+        }
+
+        if (!name) {
+          name = "Chamber User";
+        }
+
+        setUserName(name);
+        setInitial(name.charAt(0).toUpperCase());
+      } catch (error) {
+        console.error(
+          "SIDEBAR USER ERROR:",
+          error
+        );
+      }
+    }
+
+    loadCurrentUser();
+  }, []);
+
   const navigation = [
     {
       id: "chat" as ChamberSection,
@@ -169,23 +242,21 @@ export default function Sidebar({
         })}
       </nav>
 
-      {/* USER */}
+      {/* CURRENT USER */}
       <div className="border-t border-slate-800 p-4">
         <div
           className={`flex items-center ${
-            collapsed
-              ? "justify-center"
-              : ""
+            collapsed ? "justify-center" : ""
           }`}
         >
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-green-600 font-bold text-white">
-            I
+            {initial}
           </div>
 
           {!collapsed && (
-            <div className="ml-3">
-              <p className="font-semibold text-white">
-                Israel
+            <div className="ml-3 min-w-0">
+              <p className="truncate font-semibold text-white">
+                {userName}
               </p>
 
               <p className="text-sm text-green-400">
