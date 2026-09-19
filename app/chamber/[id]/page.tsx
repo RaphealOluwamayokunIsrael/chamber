@@ -56,12 +56,6 @@ export default function ChamberPage() {
     useState(true);
 
   /*
-   * AI
-   */
-  const [showAI, setShowAI] =
-    useState(true);
-
-  /*
    * CHAMBER
    */
   const [chamber, setChamber] =
@@ -102,10 +96,6 @@ export default function ChamberPage() {
 
   /*
    * LOAD ACTIVE CALL + REALTIME + FALLBACK POLLING
-   *
-   * Realtime gives immediate updates.
-   * The polling check makes the call indicator
-   * reliable even if a realtime event is missed.
    */
   useEffect(() => {
     if (!chamberId || !authorized) return;
@@ -138,13 +128,6 @@ export default function ChamberPage() {
         );
       });
 
-    /*
-     * FALLBACK CHECK
-     *
-     * This ensures members still detect
-     * an active call if Realtime misses
-     * an event.
-     */
     const pollingInterval = window.setInterval(() => {
       loadActiveCall();
     }, 3000);
@@ -262,9 +245,6 @@ export default function ChamberPage() {
       setMembersLoading(true);
       setMembersError("");
 
-      /*
-       * GET MEMBERS
-       */
       const {
         data: memberRows,
         error: memberError,
@@ -299,18 +279,12 @@ export default function ChamberPage() {
         return;
       }
 
-      /*
-       * GET USER IDS
-       */
       const userIds =
         memberRows.map(
           (member) =>
             member.user_id
         );
 
-      /*
-       * GET PROFILES
-       */
       const {
         data: profiles,
         error: profileError,
@@ -337,9 +311,6 @@ export default function ChamberPage() {
         return;
       }
 
-      /*
-       * COMBINE MEMBERS + PROFILES
-       */
       const combinedMembers: Member[] =
         memberRows.map(
           (member) => {
@@ -448,9 +419,6 @@ export default function ChamberPage() {
     try {
       setCallLoading(true);
 
-      /*
-       * CHECK FOR AN EXISTING ACTIVE CALL
-       */
       const {
         data: existingCall,
         error: existingCallError,
@@ -485,10 +453,7 @@ export default function ChamberPage() {
       }
 
       /*
-       * CALL ALREADY EXISTS.
-       *
-       * Join the exact room that is
-       * already active in this Chamber.
+       * JOIN EXISTING CALL
        */
       if (existingCall) {
         setActiveCall(
@@ -505,7 +470,7 @@ export default function ChamberPage() {
       }
 
       /*
-       * CREATE A UNIQUE ROOM FOR THIS CALL.
+       * CREATE UNIQUE ROOM
        */
       const roomName =
         `chamber-${chamberId}-${Date.now()}`;
@@ -534,14 +499,6 @@ export default function ChamberPage() {
         `)
         .single();
 
-      /*
-       * The database has a unique
-       * active-call-per-Chamber index.
-       *
-       * If another member created a call
-       * at the same time, reload the
-       * existing active call.
-       */
       if (createError) {
         console.error(
           "CREATE CHAMBER CALL ERROR:",
@@ -549,7 +506,6 @@ export default function ChamberPage() {
         );
 
         await loadActiveCall();
-
         return;
       }
 
@@ -558,10 +514,6 @@ export default function ChamberPage() {
           newCall
         );
 
-        /*
-         * Pass the actual room name
-         * to the voice page.
-         */
         router.push(
           `/voice/${chamberId}?room=${encodeURIComponent(
             newCall.room_name
@@ -586,10 +538,6 @@ export default function ChamberPage() {
   function joinCall() {
     if (!activeCall) return;
 
-    /*
-     * Pass the existing call's exact
-     * room name to the voice page.
-     */
     router.push(
       `/voice/${chamberId}?room=${encodeURIComponent(
         activeCall.room_name
@@ -707,8 +655,6 @@ export default function ChamberPage() {
 
         <div className="flex items-center justify-between gap-6 px-8 pt-6">
 
-          {/* CHAMBER INFORMATION */}
-
           <div className="min-w-0">
 
             <h1 className="truncate text-3xl font-bold text-white">
@@ -721,9 +667,7 @@ export default function ChamberPage() {
 
           </div>
 
-          {/* =================================
-              RIGHT CONTROLS
-              ================================= */}
+          {/* RIGHT CONTROLS */}
 
           <div className="flex shrink-0 items-center gap-3">
 
@@ -741,7 +685,6 @@ export default function ChamberPage() {
                 title="Start call"
                 className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 font-semibold text-white shadow-lg transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
-
                 <span className="text-lg">
                   📞
                 </span>
@@ -751,7 +694,6 @@ export default function ChamberPage() {
                     ? "Starting..."
                     : "Start Call"}
                 </span>
-
               </button>
             )}
 
@@ -767,7 +709,6 @@ export default function ChamberPage() {
                   title="Join ongoing call"
                   className="flex items-center gap-2 rounded-xl bg-green-600 px-5 py-3 font-semibold text-white shadow-lg transition hover:bg-green-700"
                 >
-
                   <span className="text-lg">
                     📞
                   </span>
@@ -775,7 +716,6 @@ export default function ChamberPage() {
                   <span>
                     Join Call
                   </span>
-
                 </button>
               )}
 
@@ -791,7 +731,6 @@ export default function ChamberPage() {
                   title="Return to ongoing call"
                   className="flex items-center gap-2 rounded-xl bg-red-600 px-5 py-3 font-semibold text-white shadow-lg transition hover:bg-red-700"
                 >
-
                   <span className="text-lg">
                     🔴
                   </span>
@@ -799,32 +738,10 @@ export default function ChamberPage() {
                   <span>
                     Call Ongoing
                   </span>
-
                 </button>
               )}
 
-            {/* AI TOGGLE */}
-
-            <button
-              type="button"
-              onClick={() =>
-                setShowAI(
-                  (value) =>
-                    !value
-                )
-              }
-              className={
-                showAI
-                  ? "rounded-xl bg-purple-600 px-4 py-3 font-semibold text-white hover:bg-purple-700"
-                  : "rounded-xl bg-slate-800 px-4 py-3 font-semibold text-white hover:bg-slate-700"
-              }
-              title="Toggle Chamber AI"
-            >
-              ✨ AI
-            </button>
-
           </div>
-
         </div>
 
         {/* =====================================
@@ -870,10 +787,6 @@ export default function ChamberPage() {
             ===================================== */}
 
         <div className="mt-6 flex min-h-0 flex-1 overflow-hidden">
-
-          {/* ===================================
-              CENTER CONTENT
-              =================================== */}
 
           <div className="min-w-0 flex-1 overflow-hidden">
 
@@ -1002,8 +915,6 @@ export default function ChamberPage() {
                               className="flex items-center gap-4 rounded-2xl border border-slate-700 bg-slate-800 p-4 transition hover:border-slate-600 hover:bg-slate-750"
                             >
 
-                              {/* AVATAR */}
-
                               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-600 text-lg font-bold text-white">
 
                                 {member.full_name
@@ -1013,8 +924,6 @@ export default function ChamberPage() {
                                   .toUpperCase()}
 
                               </div>
-
-                              {/* MEMBER DETAILS */}
 
                               <div className="min-w-0 flex-1">
 
@@ -1027,8 +936,6 @@ export default function ChamberPage() {
                                 </p>
 
                               </div>
-
-                              {/* ONLINE INDICATOR */}
 
                               <div
                                 className="h-3 w-3 shrink-0 rounded-full bg-green-500"
@@ -1112,38 +1019,59 @@ export default function ChamberPage() {
                   </p>
 
                 </div>
+              </div>
+            )}
+
+            {/* ===============================
+                CHAMBER AI
+                =============================== */}
+
+            {activeSection ===
+              "ai" && (
+              <div className="h-full overflow-hidden p-6">
+
+                <AIAssistant
+                  chamberId={
+                    chamberId
+                  }
+                  chamberName={
+                    chamber.chamber_name
+                  }
+                  chamberDescription={
+                    chamber.description
+                  }
+                  memberCount={
+                    members.length
+                  }
+                />
+
+              </div>
+            )}
+
+            {/* ===============================
+                SETTINGS
+                =============================== */}
+
+            {activeSection ===
+              "settings" && (
+              <div className="h-full overflow-y-auto p-6">
+
+                <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+
+                  <h2 className="text-2xl font-bold text-white">
+                    Settings
+                  </h2>
+
+                  <p className="mt-2 text-slate-400">
+                    Chamber settings will appear here.
+                  </p>
+
+                </div>
 
               </div>
             )}
 
           </div>
-
-          {/* ===================================
-              RIGHT SIDE — CHAMBER AI
-              =================================== */}
-
-          {showAI && (
-            <aside className="w-[360px] shrink-0 overflow-hidden border-l border-slate-800">
-
-              <AIAssistant
-                chamberId={
-                  chamberId
-                }
-                chamberName={
-                  chamber?.chamber_name ||
-                  ""
-                }
-                chamberDescription={
-                  chamber?.description ||
-                  ""
-                }
-                memberCount={
-                  members.length
-                }
-              />
-
-            </aside>
-          )}
 
         </div>
 
