@@ -426,7 +426,7 @@ export default function ChamberPage() {
       setCallLoading(true);
 
       /*
-       * CHECK EXISTING CALL
+       * CHECK FOR AN EXISTING ACTIVE CALL
        */
       const {
         data: existingCall,
@@ -457,11 +457,15 @@ export default function ChamberPage() {
           existingCallError
         );
 
+        await loadActiveCall();
         return;
       }
 
       /*
-       * CALL ALREADY EXISTS
+       * CALL ALREADY EXISTS.
+       *
+       * Join the exact room that is
+       * already active in this Chamber.
        */
       if (existingCall) {
         setActiveCall(
@@ -469,17 +473,19 @@ export default function ChamberPage() {
         );
 
         router.push(
-          `/voice/${chamberId}`
+          `/voice/${chamberId}?room=${encodeURIComponent(
+            existingCall.room_name
+          )}`
         );
 
         return;
       }
 
       /*
-       * CREATE NEW CALL
+       * CREATE A UNIQUE ROOM FOR THIS CALL.
        */
       const roomName =
-        `chamber-${chamberId}`;
+        `chamber-${chamberId}-${Date.now()}`;
 
       const {
         data: newCall,
@@ -493,7 +499,8 @@ export default function ChamberPage() {
             roomName,
           started_by:
             currentUserId,
-          status: "active",
+          status:
+            "active",
         })
         .select(`
           id,
@@ -504,6 +511,15 @@ export default function ChamberPage() {
         `)
         .single();
 
+      /*
+       * The database has a unique
+       * active-call-per-Chamber index.
+       *
+       * If another member created a call
+       * at the same time, this insert can
+       * fail. In that case, reload the
+       * existing active call.
+       */
       if (createError) {
         console.error(
           "CREATE CHAMBER CALL ERROR:",
@@ -511,6 +527,7 @@ export default function ChamberPage() {
         );
 
         await loadActiveCall();
+
         return;
       }
 
@@ -519,8 +536,15 @@ export default function ChamberPage() {
           newCall
         );
 
+        /*
+         * IMPORTANT:
+         * Pass the actual room name to
+         * the voice page.
+         */
         router.push(
-          `/voice/${chamberId}`
+          `/voice/${chamberId}?room=${encodeURIComponent(
+            newCall.room_name
+          )}`
         );
       }
     } catch (error) {
@@ -528,19 +552,27 @@ export default function ChamberPage() {
         "START CALL ERROR:",
         error
       );
+
+      await loadActiveCall();
     } finally {
       setCallLoading(false);
     }
   }
 
   /*
-   * JOIN CALL
+   * JOIN ACTIVE CALL
    */
   function joinCall() {
     if (!activeCall) return;
 
+    /*
+     * Pass the existing call's exact
+     * room name to the voice page.
+     */
     router.push(
-      `/voice/${chamberId}`
+      `/voice/${chamberId}?room=${encodeURIComponent(
+        activeCall.room_name
+      )}`
     );
   }
 
@@ -645,6 +677,7 @@ export default function ChamberPage() {
       <section className="flex min-w-0 flex-1 flex-col">
 
         {/* TOPBAR */}
+
         <Topbar />
 
         {/* =====================================
@@ -654,6 +687,7 @@ export default function ChamberPage() {
         <div className="flex items-center justify-between gap-6 px-8 pt-6">
 
           {/* CHAMBER INFORMATION */}
+
           <div className="min-w-0">
 
             <h1 className="truncate text-3xl font-bold text-white">
@@ -673,6 +707,7 @@ export default function ChamberPage() {
           <div className="flex shrink-0 items-center gap-3">
 
             {/* START CALL */}
+
             {!activeCall && (
               <button
                 type="button"
@@ -685,6 +720,7 @@ export default function ChamberPage() {
                 title="Start call"
                 className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 font-semibold text-white shadow-lg transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
+
                 <span className="text-lg">
                   📞
                 </span>
@@ -694,10 +730,12 @@ export default function ChamberPage() {
                     ? "Starting..."
                     : "Start Call"}
                 </span>
+
               </button>
             )}
 
             {/* JOIN CALL */}
+
             {activeCall &&
               !isCallStarter && (
                 <button
@@ -708,6 +746,7 @@ export default function ChamberPage() {
                   title="Join ongoing call"
                   className="flex items-center gap-2 rounded-xl bg-green-600 px-5 py-3 font-semibold text-white shadow-lg transition hover:bg-green-700"
                 >
+
                   <span className="text-lg">
                     📞
                   </span>
@@ -715,10 +754,12 @@ export default function ChamberPage() {
                   <span>
                     Join Call
                   </span>
+
                 </button>
               )}
 
             {/* CALL STARTER */}
+
             {activeCall &&
               isCallStarter && (
                 <button
@@ -729,6 +770,7 @@ export default function ChamberPage() {
                   title="Return to ongoing call"
                   className="flex items-center gap-2 rounded-xl bg-red-600 px-5 py-3 font-semibold text-white shadow-lg transition hover:bg-red-700"
                 >
+
                   <span className="text-lg">
                     🔴
                   </span>
@@ -736,10 +778,12 @@ export default function ChamberPage() {
                   <span>
                     Call Ongoing
                   </span>
+
                 </button>
               )}
 
             {/* AI TOGGLE */}
+
             <button
               type="button"
               onClick={() =>
@@ -759,6 +803,7 @@ export default function ChamberPage() {
             </button>
 
           </div>
+
         </div>
 
         {/* =====================================
@@ -878,15 +923,19 @@ export default function ChamberPage() {
                   </div>
 
                   {/* MEMBERS LOADING */}
+
                   {membersLoading && (
                     <div className="mt-6 rounded-xl bg-slate-800 p-5">
+
                       <p className="text-slate-400">
                         Loading members...
                       </p>
+
                     </div>
                   )}
 
                   {/* MEMBERS ERROR */}
+
                   {!membersLoading &&
                     membersError && (
                       <div className="mt-6 rounded-xl border border-red-800 bg-red-950/40 p-5">
@@ -903,6 +952,7 @@ export default function ChamberPage() {
                     )}
 
                   {/* NO MEMBERS */}
+
                   {!membersLoading &&
                     !membersError &&
                     members.length === 0 && (
@@ -916,6 +966,7 @@ export default function ChamberPage() {
                     )}
 
                   {/* MEMBER LIST */}
+
                   {!membersLoading &&
                     !membersError &&
                     members.length > 0 && (
@@ -931,15 +982,19 @@ export default function ChamberPage() {
                             >
 
                               {/* AVATAR */}
+
                               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-600 text-lg font-bold text-white">
+
                                 {member.full_name
                                   .charAt(
                                     0
                                   )
                                   .toUpperCase()}
+
                               </div>
 
                               {/* MEMBER DETAILS */}
+
                               <div className="min-w-0 flex-1">
 
                                 <p className="truncate font-semibold text-white">
@@ -953,6 +1008,7 @@ export default function ChamberPage() {
                               </div>
 
                               {/* ONLINE INDICATOR */}
+
                               <div
                                 className="h-3 w-3 shrink-0 rounded-full bg-green-500"
                                 title="Online"
@@ -1047,12 +1103,24 @@ export default function ChamberPage() {
 
           {showAI && (
             <aside className="w-[360px] shrink-0 overflow-hidden border-l border-slate-800">
+
               <AIAssistant
-  chamberId={chamberId}
-  chamberName={chamber?.chamber_name || ""}
-  chamberDescription={chamber?.description || ""}
-  memberCount={members.length}
-/>
+                chamberId={
+                  chamberId
+                }
+                chamberName={
+                  chamber?.chamber_name ||
+                  ""
+                }
+                chamberDescription={
+                  chamber?.description ||
+                  ""
+                }
+                memberCount={
+                  members.length
+                }
+              />
+
             </aside>
           )}
 

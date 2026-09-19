@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
+
 type Props = {
   message: string;
   sender: string;
@@ -13,17 +15,77 @@ export default function MessageBubble({
   createdAt,
   isMine,
 }: Props) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const element = ref.current;
+
+    if (!element) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setVisible(entry.isIntersecting);
+      },
+      {
+        threshold: 0.05,
+        rootMargin: "0px 0px -20px 0px",
+      }
+    );
+
+    observer.observe(element);
+
+    return () => observer.disconnect();
+  }, []);
+
+  const date = new Date(createdAt);
+
+  const now = new Date();
+  const yesterday = new Date();
+
+  yesterday.setDate(now.getDate() - 1);
+
+  const isToday =
+    date.toDateString() === now.toDateString();
+
+  const isYesterday =
+    date.toDateString() === yesterday.toDateString();
+
+  let dateLabel = "";
+
+  if (isToday) {
+    dateLabel = "Today";
+  } else if (isYesterday) {
+    dateLabel = "Yesterday";
+  } else {
+    dateLabel = date.toLocaleDateString([], {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  }
+
+  const timeLabel = date.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
   return (
     <div
-      className={`flex mb-4 ${
+      ref={ref}
+      className={`mb-4 flex transition-all duration-500 ease-out ${
         isMine ? "justify-end" : "justify-start"
+      } ${
+        visible
+          ? "translate-y-0 opacity-100"
+          : "translate-y-3 opacity-0"
       }`}
     >
       <div
         className={`max-w-[75%] rounded-2xl px-5 py-3 shadow-lg ${
           isMine
-            ? "bg-blue-600 text-white rounded-br-md"
-            : "bg-slate-800 text-white rounded-bl-md"
+            ? "rounded-br-md bg-blue-600 text-white"
+            : "rounded-bl-md bg-slate-800 text-white"
         }`}
       >
         {!isMine && (
@@ -43,10 +105,7 @@ export default function MessageBubble({
               : "text-slate-400"
           }`}
         >
-          {new Date(createdAt).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
+          {dateLabel} · {timeLabel}
         </p>
       </div>
     </div>

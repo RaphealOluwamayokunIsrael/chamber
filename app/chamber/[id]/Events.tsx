@@ -10,7 +10,6 @@ type EventItem = {
   title: string;
   description: string | null;
   event_date: string;
-  event_time: string | null;
   location: string | null;
   created_at: string;
 };
@@ -23,23 +22,15 @@ export default function Events({
   chamberId,
 }: EventsProps) {
   const [events, setEvents] = useState<EventItem[]>([]);
-
   const [loading, setLoading] = useState(true);
-
   const [creating, setCreating] = useState(false);
-
   const [currentUserId, setCurrentUserId] = useState("");
-
   const [showCreateForm, setShowCreateForm] = useState(false);
 
   const [title, setTitle] = useState("");
-
   const [description, setDescription] = useState("");
-
   const [eventDate, setEventDate] = useState("");
-
   const [eventTime, setEventTime] = useState("");
-
   const [location, setLocation] = useState("");
 
   useEffect(() => {
@@ -92,26 +83,13 @@ export default function Events({
           title,
           description,
           event_date,
-          event_time,
           location,
           created_at
         `)
-        .eq(
-          "chamber_id",
-          chamberId
-        )
-        .order(
-          "event_date",
-          {
-            ascending: true,
-          }
-        )
-        .order(
-          "event_time",
-          {
-            ascending: true,
-          }
-        );
+        .eq("chamber_id", chamberId)
+        .order("event_date", {
+          ascending: true,
+        });
 
       if (error) {
         console.error(
@@ -186,28 +164,27 @@ export default function Events({
         return;
       }
 
+      /*
+       * The database stores both the event date and time
+       * in the event_date timestamp column.
+       */
+      const eventDateTime = eventTime
+        ? `${eventDate}T${eventTime}:00`
+        : `${eventDate}T00:00:00`;
+
       const {
         error,
       } = await supabase
         .from("events")
         .insert({
-          chamber_id:
-            chamberId,
-          created_by:
-            user.id,
-          title:
-            title.trim(),
+          chamber_id: chamberId,
+          created_by: user.id,
+          title: title.trim(),
           description:
-            description.trim() ||
-            null,
-          event_date:
-            eventDate,
-          event_time:
-            eventTime ||
-            null,
+            description.trim() || null,
+          event_date: eventDateTime,
           location:
-            location.trim() ||
-            null,
+            location.trim() || null,
         });
 
       if (error) {
@@ -253,8 +230,7 @@ export default function Events({
     eventTitle: string
   ) {
     if (
-      createdBy !==
-      currentUserId
+      createdBy !== currentUserId
     ) {
       alert(
         "You can only delete events you created."
@@ -276,10 +252,7 @@ export default function Events({
       } = await supabase
         .from("events")
         .delete()
-        .eq(
-          "id",
-          eventId
-        )
+        .eq("id", eventId)
         .eq(
           "created_by",
           currentUserId
@@ -319,12 +292,9 @@ export default function Events({
   function formatDate(
     date: string
   ) {
-    const parsedDate =
-      new Date(
-        `${date}T00:00:00`
-      );
-
-    return parsedDate.toLocaleDateString(
+    return new Date(
+      date
+    ).toLocaleDateString(
       undefined,
       {
         weekday: "short",
@@ -336,18 +306,11 @@ export default function Events({
   }
 
   function formatTime(
-    time: string | null
+    date: string
   ) {
-    if (!time) {
-      return "";
-    }
-
-    const parsedTime =
-      new Date(
-        `1970-01-01T${time}`
-      );
-
-    return parsedTime.toLocaleTimeString(
+    return new Date(
+      date
+    ).toLocaleTimeString(
       undefined,
       {
         hour: "numeric",
@@ -357,19 +320,10 @@ export default function Events({
   }
 
   function isPast(
-    eventDate: string,
-    eventTime: string | null
+    eventDate: string
   ) {
-    const dateTime = eventTime
-      ? new Date(
-          `${eventDate}T${eventTime}`
-        )
-      : new Date(
-          `${eventDate}T23:59:59`
-        );
-
     return (
-      dateTime.getTime() <
+      new Date(eventDate).getTime() <
       Date.now()
     );
   }
@@ -378,8 +332,7 @@ export default function Events({
     events.filter(
       (event) =>
         !isPast(
-          event.event_date,
-          event.event_time
+          event.event_date
         )
     );
 
@@ -387,14 +340,12 @@ export default function Events({
     events.filter(
       (event) =>
         isPast(
-          event.event_date,
-          event.event_time
+          event.event_date
         )
     );
 
   return (
     <div className="h-full overflow-y-auto p-6">
-
       <div className="mx-auto max-w-5xl">
 
         {/* HEADER */}
@@ -415,12 +366,8 @@ export default function Events({
 
             <button
               type="button"
-              onClick={
-                loadEvents
-              }
-              disabled={
-                loading
-              }
+              onClick={loadEvents}
+              disabled={loading}
               className="rounded-xl bg-slate-800 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:opacity-50"
             >
               Refresh
@@ -430,8 +377,7 @@ export default function Events({
               type="button"
               onClick={() =>
                 setShowCreateForm(
-                  (value) =>
-                    !value
+                  (value) => !value
                 )
               }
               className="rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:bg-blue-700"
@@ -463,9 +409,7 @@ export default function Events({
             </div>
 
             <form
-              onSubmit={
-                createEvent
-              }
+              onSubmit={createEvent}
               className="space-y-5"
             >
 
@@ -501,9 +445,7 @@ export default function Events({
                 </label>
 
                 <textarea
-                  value={
-                    description
-                  }
+                  value={description}
                   onChange={(event) =>
                     setDescription(
                       event.target.value
@@ -528,9 +470,7 @@ export default function Events({
 
                   <input
                     type="date"
-                    value={
-                      eventDate
-                    }
+                    value={eventDate}
                     onChange={(event) =>
                       setEventDate(
                         event.target.value
@@ -550,9 +490,7 @@ export default function Events({
 
                   <input
                     type="time"
-                    value={
-                      eventTime
-                    }
+                    value={eventTime}
                     onChange={(event) =>
                       setEventTime(
                         event.target.value
@@ -575,9 +513,7 @@ export default function Events({
 
                 <input
                   type="text"
-                  value={
-                    location
-                  }
+                  value={location}
                   onChange={(event) =>
                     setLocation(
                       event.target.value
@@ -608,9 +544,7 @@ export default function Events({
 
                 <button
                   type="submit"
-                  disabled={
-                    creating
-                  }
+                  disabled={creating}
                   className="rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {creating
@@ -637,6 +571,7 @@ export default function Events({
           </div>
         ) : (
           <>
+
             {/* UPCOMING EVENTS */}
 
             <div className="mt-8">
@@ -653,8 +588,7 @@ export default function Events({
 
               </div>
 
-              {upcomingEvents.length ===
-              0 ? (
+              {upcomingEvents.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/50 p-10 text-center">
 
                   <div className="text-5xl">
@@ -676,9 +610,7 @@ export default function Events({
                   {upcomingEvents.map(
                     (event) => (
                       <div
-                        key={
-                          event.id
-                        }
+                        key={event.id}
                         className="rounded-2xl border border-slate-800 bg-slate-900 p-5 transition hover:border-slate-700"
                       >
 
@@ -692,7 +624,7 @@ export default function Events({
 
                                 <span className="text-xs font-semibold uppercase">
                                   {new Date(
-                                    `${event.event_date}T00:00:00`
+                                    event.event_date
                                   ).toLocaleDateString(
                                     undefined,
                                     {
@@ -704,7 +636,7 @@ export default function Events({
 
                                 <span className="text-xl font-bold">
                                   {new Date(
-                                    `${event.event_date}T00:00:00`
+                                    event.event_date
                                   ).getDate()}
                                 </span>
 
@@ -725,14 +657,12 @@ export default function Events({
                                     )}
                                   </span>
 
-                                  {event.event_time && (
-                                    <span>
-                                      🕐{" "}
-                                      {formatTime(
-                                        event.event_time
-                                      )}
-                                    </span>
-                                  )}
+                                  <span>
+                                    🕐{" "}
+                                    {formatTime(
+                                      event.event_date
+                                    )}
+                                  </span>
 
                                   {event.location && (
                                     <span>
@@ -749,9 +679,7 @@ export default function Events({
 
                             {event.description && (
                               <p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-slate-400">
-                                {
-                                  event.description
-                                }
+                                {event.description}
                               </p>
                             )}
 
@@ -787,8 +715,7 @@ export default function Events({
 
             {/* PAST EVENTS */}
 
-            {pastEvents.length >
-              0 && (
+            {pastEvents.length > 0 && (
               <div className="mt-10">
 
                 <div className="mb-4 flex items-center justify-between">
@@ -808,9 +735,7 @@ export default function Events({
                   {pastEvents.map(
                     (event) => (
                       <div
-                        key={
-                          event.id
-                        }
+                        key={event.id}
                         className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 opacity-75"
                       >
 
@@ -831,14 +756,12 @@ export default function Events({
                                 )}
                               </span>
 
-                              {event.event_time && (
-                                <span>
-                                  🕐{" "}
-                                  {formatTime(
-                                    event.event_time
-                                  )}
-                                </span>
-                              )}
+                              <span>
+                                🕐{" "}
+                                {formatTime(
+                                  event.event_date
+                                )}
+                              </span>
 
                               {event.location && (
                                 <span>
@@ -883,7 +806,6 @@ export default function Events({
         )}
 
       </div>
-
     </div>
   );
 }

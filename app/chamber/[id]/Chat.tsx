@@ -16,6 +16,11 @@ type Profile = {
   full_name: string | null;
 };
 
+type TypingUser = {
+  userId: string;
+  name: string;
+};
+
 export default function Chat({
   chamberId,
 }: {
@@ -26,15 +31,28 @@ export default function Chat({
   const [loading, setLoading] = useState(true);
   const [newMessage, setNewMessage] = useState("");
   const [currentUserId, setCurrentUserId] = useState("");
+  const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const typingTimeoutRef = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null);
+
+  const channelRef = useRef<ReturnType<
+    typeof supabase.channel
+  > | null>(null);
+
   useEffect(() => {
+    let mounted = true;
+
     async function initialize() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
+
+      if (!mounted) return;
 
       if (user) {
         setCurrentUserId(user.id);
@@ -59,18 +77,71 @@ export default function Chat({
           loadMessages();
         }
       )
+      .on(
+        "broadcast",
+        {
+          event: "typing",
+        },
+        (payload) => {
+          const {
+            userId,
+            name,
+            isTyping,
+          } = payload.payload || {};
+
+          if (!userId || userId === currentUserId) {
+            return;
+          }
+
+          setTypingUsers((current) => {
+            const alreadyTyping = current.some(
+              (user) => user.userId === userId
+            );
+
+            if (isTyping) {
+              if (alreadyTyping) {
+                return current;
+              }
+
+              return [
+                ...current,
+                {
+                  userId,
+                  name: name || "Someone",
+                },
+              ];
+            }
+
+            return current.filter(
+              (user) => user.userId !== userId
+            );
+          });
+        }
+      )
       .subscribe((status) => {
         console.log("Realtime:", status);
       });
 
+    channelRef.current = channel;
+
     return () => {
+      mounted = false;
+
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+
       supabase.removeChannel(channel);
+      channelRef.current = null;
     };
-  }, [chamberId]);
+  }, [chamberId, currentUserId]);
 
   async function loadMessages() {
     try {
-      const { data, error } = await supabase
+      const {
+        data,
+        error,
+      } = await supabase
         .from("messages")
         .select("*")
         .eq("chamber_id", chamberId)
@@ -79,7 +150,11 @@ export default function Chat({
         });
 
       if (error) {
-        console.error("LOAD MESSAGES ERROR:", error);
+        console.error(
+          "LOAD MESSAGES ERROR:",
+          error
+        );
+
         setLoading(false);
         return;
       }
@@ -92,7 +167,6 @@ export default function Chat({
 
       setMessages(data);
 
-      // Get unique sender IDs
       const senderIds = [
         ...new Set(
           data.map((msg) => msg.sender_id)
@@ -138,6 +212,51 @@ export default function Chat({
     return profile?.full_name || "Unknown User";
   }
 
+  async function broadcastTyping(
+    isTyping: boolean
+  ) {
+    if (!channelRef.current || !currentUserId) {
+      return;
+    }
+
+    const senderName =
+      getSenderName(currentUserId);
+
+    await channelRef.current.send({
+      type: "broadcast",
+      event: "typing",
+      payload: {
+        userId: currentUserId,
+        name: senderName,
+        isTyping,
+      },
+    });
+  }
+
+  function handleTyping(value: string) {
+    setNewMessage(value);
+
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "48px";
+      textareaRef.current.style.height =
+        textareaRef.current.scrollHeight + "px";
+    }
+
+    broadcastTyping(value.trim().length > 0);
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    if (value.trim().length > 0) {
+      typingTimeoutRef.current = setTimeout(() => {
+        broadcastTyping(false);
+      }, 2000);
+    } else {
+      broadcastTyping(false);
+    }
+  }
+
   async function sendMessage() {
     if (!newMessage.trim()) return;
 
@@ -147,22 +266,35 @@ export default function Chat({
 
     if (!user) return;
 
-    const { error } = await supabase
+    const messageToSend = newMessage.trim();
+
+    const {
+      error,
+    } = await supabase
       .from("messages")
       .insert([
         {
           chamber_id: chamberId,
           sender_id: user.id,
-          message: newMessage.trim(),
+          message: messageToSend,
         },
       ]);
 
     if (error) {
-      console.error("SEND MESSAGE ERROR:", error);
+      console.error(
+        "SEND MESSAGE ERROR:",
+        error
+      );
       return;
     }
 
     setNewMessage("");
+
+    await broadcastTyping(false);
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
 
     if (textareaRef.current) {
       textareaRef.current.style.height = "48px";
@@ -176,6 +308,30 @@ export default function Chat({
       e.preventDefault();
       sendMessage();
     }
+  }
+
+  function renderTypingIndicator() {
+    if (typingUsers.length === 0) {
+      return null;
+    }
+
+    let text = "";
+
+    if (typingUsers.length === 1) {
+      text = `${typingUsers[0].name} is typing...`;
+    } else if (typingUsers.length === 2) {
+      text = `${typingUsers[0].name} and ${typingUsers[1].name} are typing...`;
+    } else {
+      text = `${typingUsers[0].name} and ${
+        typingUsers.length - 1
+      } others are typing...`;
+    }
+
+    return (
+      <div className="px-1 pb-2 text-xs text-slate-400">
+        <span>{text}</span>
+      </div>
+    );
   }
 
   return (
@@ -198,7 +354,9 @@ export default function Chat({
               message={msg.message}
               sender={getSenderName(msg.sender_id)}
               createdAt={msg.created_at}
-              isMine={msg.sender_id === currentUserId}
+              isMine={
+                msg.sender_id === currentUserId
+              }
             />
           ))
         )}
@@ -207,18 +365,16 @@ export default function Chat({
       </div>
 
       <div className="flex-shrink-0 border-t border-slate-800 bg-slate-900 p-5">
+        {renderTypingIndicator()}
+
         <textarea
           ref={textareaRef}
           rows={1}
           value={newMessage}
           placeholder="Type a message..."
-          onChange={(e) => {
-            setNewMessage(e.target.value);
-
-            e.target.style.height = "48px";
-            e.target.style.height =
-              e.target.scrollHeight + "px";
-          }}
+          onChange={(e) =>
+            handleTyping(e.target.value)
+          }
           onKeyDown={handleKeyDown}
           className="w-full resize-none rounded-xl border border-slate-700 bg-slate-800 p-4 text-white outline-none placeholder:text-slate-500 focus:border-blue-500"
           style={{
