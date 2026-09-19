@@ -5,6 +5,9 @@ import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 import AIAssistant from "./AIAssistant";
+import Announcements from "./Announcements";
+import Events from "./Events";
+import Polls from "./Polls";
 
 import Sidebar, {
   ChamberSection,
@@ -34,48 +37,44 @@ type Member = {
   full_name: string;
 };
 
+type ChamberFile = {
+  id: string;
+  chamber_id: string;
+  uploaded_by: string;
+  file_name: string;
+  file_url: string;
+  file_type: string | null;
+  file_size: number | null;
+  created_at: string;
+};
+
 export default function ChamberPage() {
   const params = useParams();
   const router = useRouter();
 
   const chamberId = params.id as string;
 
-  /*
-   * BASIC PAGE STATE
-   */
   const [loading, setLoading] = useState(true);
   const [authorized, setAuthorized] = useState(false);
 
-  /*
-   * SIDEBAR
-   */
   const [activeSection, setActiveSection] =
     useState<ChamberSection>("chat");
 
   const [showSidebar, setShowSidebar] =
     useState(true);
 
-  /*
-   * CHAMBER
-   */
   const [chamber, setChamber] =
     useState<Chamber | null>(null);
 
   const [currentUserId, setCurrentUserId] =
     useState("");
 
-  /*
-   * CALL
-   */
   const [activeCall, setActiveCall] =
     useState<ChamberCall | null>(null);
 
   const [callLoading, setCallLoading] =
     useState(false);
 
-  /*
-   * MEMBERS
-   */
   const [members, setMembers] =
     useState<Member[]>([]);
 
@@ -85,18 +84,24 @@ export default function ChamberPage() {
   const [membersError, setMembersError] =
     useState("");
 
-  /*
-   * LOAD CHAMBER
-   */
+  const [files, setFiles] =
+    useState<ChamberFile[]>([]);
+
+  const [filesLoading, setFilesLoading] =
+    useState(false);
+
+  const [selectedFile, setSelectedFile] =
+    useState<File | null>(null);
+
+  const [uploadingFile, setUploadingFile] =
+    useState(false);
+
   useEffect(() => {
     if (!chamberId) return;
 
     loadChamber();
   }, [chamberId]);
 
-  /*
-   * LOAD ACTIVE CALL + REALTIME + FALLBACK POLLING
-   */
   useEffect(() => {
     if (!chamberId || !authorized) return;
 
@@ -113,37 +118,26 @@ export default function ChamberPage() {
           filter: `chamber_id=eq.${chamberId}`,
         },
         () => {
-          console.log(
-            "CHAMBER CALL CHANGE DETECTED:",
-            chamberId
-          );
-
           loadActiveCall();
         }
       )
       .subscribe((status) => {
         console.log(
-          "CALL REALTIME STATUS:",
+          "CHAMBER CALL REALTIME:",
           status
         );
       });
 
-    const pollingInterval = window.setInterval(() => {
+    const interval = setInterval(() => {
       loadActiveCall();
     }, 3000);
 
     return () => {
-      window.clearInterval(
-        pollingInterval
-      );
-
+      clearInterval(interval);
       supabase.removeChannel(channel);
     };
   }, [chamberId, authorized]);
 
-  /*
-   * LOAD MEMBERS WHEN MEMBERS SECTION IS OPENED
-   */
   useEffect(() => {
     if (
       !chamberId ||
@@ -160,9 +154,22 @@ export default function ChamberPage() {
     activeSection,
   ]);
 
-  /*
-   * LOAD CHAMBER
-   */
+  useEffect(() => {
+    if (
+      !chamberId ||
+      !authorized ||
+      activeSection !== "files"
+    ) {
+      return;
+    }
+
+    loadFiles();
+  }, [
+    chamberId,
+    authorized,
+    activeSection,
+  ]);
+
   async function loadChamber() {
     try {
       setLoading(true);
@@ -178,12 +185,9 @@ export default function ChamberPage() {
 
       setCurrentUserId(user.id);
 
-      /*
-       * CHECK MEMBERSHIP
-       */
       const {
-        data: member,
-        error: memberError,
+        data: membership,
+        error: membershipError,
       } = await supabase
         .from("members")
         .select("id")
@@ -191,62 +195,59 @@ export default function ChamberPage() {
         .eq("user_id", user.id)
         .maybeSingle();
 
-      if (memberError) {
-        console.error(
-          "MEMBERSHIP CHECK ERROR:",
-          memberError
-        );
-      }
-
-      if (!member) {
-        setLoading(false);
+      if (
+        membershipError ||
+        !membership
+      ) {
+        router.push("/join");
         return;
       }
 
-      /*
-       * LOAD CHAMBER
-       */
       const {
-        data,
-        error,
+        data: chamberData,
+        error: chamberError,
       } = await supabase
         .from("chambers")
-        .select("*")
+        .select(
+          "id, chamber_name, description"
+        )
         .eq("id", chamberId)
         .single();
 
-      if (error) {
+      if (
+        chamberError ||
+        !chamberData
+      ) {
         console.error(
-          "CHAMBER ERROR:",
-          error
+          "LOAD CHAMBER ERROR:",
+          chamberError
         );
+
+        router.push("/dashboard");
         return;
       }
 
-      if (data) {
-        setAuthorized(true);
-        setChamber(data);
-      }
+      setChamber(chamberData);
+      setAuthorized(true);
     } catch (error) {
       console.error(
-        "LOAD CHAMBER ERROR:",
+        "CHAMBER LOAD ERROR:",
         error
       );
+
+      router.push("/dashboard");
     } finally {
       setLoading(false);
     }
   }
 
-  /*
-   * LOAD MEMBERS
-   */
   async function loadMembers() {
     try {
       setMembersLoading(true);
       setMembersError("");
 
       const {
-        data: memberRows,
+        data: memberData,
         error: memberError,
       } = await supabase
         .from("members")
@@ -256,11 +257,14 @@ export default function ChamberPage() {
         .eq(
           "chamber_id",
           chamberId
-        );
+        )
+        .order("joined_at", {
+          ascending: true,
+        });
 
       if (memberError) {
         console.error(
-          "MEMBERS ERROR:",
+          "LOAD MEMBERS ERROR:",
           memberError
         );
 
@@ -271,10 +275,10 @@ export default function ChamberPage() {
         return;
       }
 
-      if (
-        !memberRows ||
-        memberRows.length === 0
-      ) {
+      const memberRows =
+        memberData || [];
+
+      if (memberRows.length === 0) {
         setMembers([]);
         return;
       }
@@ -286,7 +290,7 @@ export default function ChamberPage() {
         );
 
       const {
-        data: profiles,
+        data: profileData,
         error: profileError,
       } = await supabase
         .from("profiles")
@@ -300,48 +304,35 @@ export default function ChamberPage() {
 
       if (profileError) {
         console.error(
-          "PROFILES ERROR:",
+          "LOAD MEMBER PROFILES ERROR:",
           profileError
         );
-
-        setMembersError(
-          profileError.message
-        );
-
-        return;
       }
 
-      const combinedMembers: Member[] =
-        memberRows.map(
-          (member) => {
-            const profile =
-              profiles?.find(
-                (profile) =>
-                  profile.id ===
-                  member.user_id
-              );
-
-            return {
-              id: member.id,
-              user_id:
-                member.user_id,
-              role:
-                member.role ||
-                "Member",
-              full_name:
-                profile?.full_name ||
-                "Chamber Member",
-            };
-          }
+      const profileMap =
+        new Map(
+          (profileData || []).map(
+            (profile) => [
+              profile.id,
+              profile.full_name,
+            ]
+          )
         );
 
       setMembers(
-        combinedMembers
-      );
-
-      console.log(
-        "CHAMBER MEMBERS:",
-        combinedMembers
+        memberRows.map(
+          (member) => ({
+            id: member.id,
+            user_id:
+              member.user_id,
+            role: member.role,
+            full_name:
+              profileMap.get(
+                member.user_id
+              ) ||
+              "Chamber Member",
+          })
+        )
       );
     } catch (error) {
       console.error(
@@ -350,32 +341,23 @@ export default function ChamberPage() {
       );
 
       setMembersError(
-        "Unable to load chamber members."
+        "Unable to load Chamber members."
       );
     } finally {
       setMembersLoading(false);
     }
   }
 
-  /*
-   * LOAD ACTIVE CALL
-   */
   async function loadActiveCall() {
-    if (!chamberId) return;
-
     try {
       const {
         data,
         error,
       } = await supabase
         .from("chamber_calls")
-        .select(`
-          id,
-          chamber_id,
-          room_name,
-          started_by,
-          status
-        `)
+        .select(
+          "id, chamber_id, room_name, started_by, status"
+        )
         .eq(
           "chamber_id",
           chamberId
@@ -384,37 +366,32 @@ export default function ChamberPage() {
           "status",
           "active"
         )
-        .limit(1)
         .maybeSingle();
 
       if (error) {
         console.error(
-          "ACTIVE CALL ERROR:",
+          "LOAD ACTIVE CALL ERROR:",
           error
         );
 
         return;
       }
 
-      if (!data) {
-        setActiveCall(null);
-        return;
-      }
-
-      setActiveCall(data);
+      setActiveCall(
+        data || null
+      );
     } catch (error) {
       console.error(
-        "LOAD ACTIVE CALL ERROR:",
+        "ACTIVE CALL ERROR:",
         error
       );
     }
   }
 
-  /*
-   * START CALL
-   */
   async function startCall() {
-    if (callLoading) return;
+    if (!currentUserId) {
+      return;
+    }
 
     try {
       setCallLoading(true);
@@ -424,13 +401,9 @@ export default function ChamberPage() {
         error: existingCallError,
       } = await supabase
         .from("chamber_calls")
-        .select(`
-          id,
-          chamber_id,
-          room_name,
-          started_by,
-          status
-        `)
+        .select(
+          "id, chamber_id, room_name, started_by, status"
+        )
         .eq(
           "chamber_id",
           chamberId
@@ -439,27 +412,18 @@ export default function ChamberPage() {
           "status",
           "active"
         )
-        .limit(1)
         .maybeSingle();
 
       if (existingCallError) {
         console.error(
-          "CHECK EXISTING CALL ERROR:",
+          "CHECK ACTIVE CALL ERROR:",
           existingCallError
         );
 
-        await loadActiveCall();
         return;
       }
 
-      /*
-       * JOIN EXISTING CALL
-       */
       if (existingCall) {
-        setActiveCall(
-          existingCall
-        );
-
         router.push(
           `/voice/${chamberId}?room=${encodeURIComponent(
             existingCall.room_name
@@ -469,15 +433,12 @@ export default function ChamberPage() {
         return;
       }
 
-      /*
-       * CREATE UNIQUE ROOM
-       */
       const roomName =
         `chamber-${chamberId}-${Date.now()}`;
 
       const {
         data: newCall,
-        error: createError,
+        error: createCallError,
       } = await supabase
         .from("chamber_calls")
         .insert({
@@ -490,51 +451,77 @@ export default function ChamberPage() {
           status:
             "active",
         })
-        .select(`
-          id,
-          chamber_id,
-          room_name,
-          started_by,
-          status
-        `)
+        .select(
+          "id, chamber_id, room_name, started_by, status"
+        )
         .single();
 
-      if (createError) {
+      if (createCallError) {
         console.error(
-          "CREATE CHAMBER CALL ERROR:",
-          createError
+          "START CALL ERROR:",
+          createCallError
         );
 
-        await loadActiveCall();
+        if (
+          createCallError.code ===
+          "23505"
+        ) {
+          await loadActiveCall();
+
+          const {
+            data:
+              activeExistingCall,
+          } =
+            await supabase
+              .from(
+                "chamber_calls"
+              )
+              .select(
+                "id, chamber_id, room_name, started_by, status"
+              )
+              .eq(
+                "chamber_id",
+                chamberId
+              )
+              .eq(
+                "status",
+                "active"
+              )
+              .maybeSingle();
+
+          if (
+            activeExistingCall
+          ) {
+            router.push(
+              `/voice/${chamberId}?room=${encodeURIComponent(
+                activeExistingCall.room_name
+              )}`
+            );
+          }
+        }
+
         return;
       }
 
-      if (newCall) {
-        setActiveCall(
-          newCall
-        );
+      setActiveCall(
+        newCall
+      );
 
-        router.push(
-          `/voice/${chamberId}?room=${encodeURIComponent(
-            newCall.room_name
-          )}`
-        );
-      }
+      router.push(
+        `/voice/${chamberId}?room=${encodeURIComponent(
+          newCall.room_name
+        )}`
+      );
     } catch (error) {
       console.error(
         "START CALL ERROR:",
         error
       );
-
-      await loadActiveCall();
     } finally {
       setCallLoading(false);
     }
   }
 
-  /*
-   * JOIN ACTIVE CALL
-   */
   function joinCall() {
     if (!activeCall) return;
 
@@ -545,82 +532,276 @@ export default function ChamberPage() {
     );
   }
 
-  /*
-   * SIDEBAR SECTION
-   */
+  async function loadFiles() {
+    try {
+      setFilesLoading(true);
+
+      const {
+        data,
+        error,
+      } = await supabase
+        .from("files")
+        .select(
+          "id, chamber_id, uploaded_by, file_name, file_url, file_type, file_size, created_at"
+        )
+        .eq(
+          "chamber_id",
+          chamberId
+        )
+        .order(
+          "created_at",
+          {
+            ascending: false,
+          }
+        );
+
+      if (error) {
+        console.error(
+          "LOAD FILES ERROR:",
+          error
+        );
+
+        return;
+      }
+
+      setFiles(
+        data || []
+      );
+    } catch (error) {
+      console.error(
+        "FILES LOAD ERROR:",
+        error
+      );
+    } finally {
+      setFilesLoading(false);
+    }
+  }
+
+  async function uploadFile() {
+    if (!selectedFile) {
+      alert(
+        "Please select a file first."
+      );
+      return;
+    }
+
+    if (!currentUserId) {
+      alert(
+        "Please login first."
+      );
+      return;
+    }
+
+    if (
+      selectedFile.size >
+      10 * 1024 * 1024
+    ) {
+      alert(
+        "File size must not exceed 10 MB."
+      );
+      return;
+    }
+
+    try {
+      setUploadingFile(true);
+
+      const safeFileName =
+        selectedFile.name.replace(
+          /[^a-zA-Z0-9.\-_]/g,
+          "_"
+        );
+
+      const storagePath =
+        `${chamberId}/${Date.now()}-${safeFileName}`;
+
+      const {
+        error: uploadError,
+      } = await supabase.storage
+        .from("chamber-files")
+        .upload(
+          storagePath,
+          selectedFile
+        );
+
+      if (uploadError) {
+        console.error(
+          "FILE UPLOAD ERROR:",
+          uploadError
+        );
+
+        alert(
+          "Unable to upload the file. Please try again."
+        );
+
+        return;
+      }
+
+      const {
+        data: publicUrlData,
+      } = supabase.storage
+        .from("chamber-files")
+        .getPublicUrl(
+          storagePath
+        );
+
+      const {
+        error: databaseError,
+      } = await supabase
+        .from("files")
+        .insert({
+          chamber_id:
+            chamberId,
+          uploaded_by:
+            currentUserId,
+          file_name:
+            selectedFile.name,
+          file_url:
+            publicUrlData.publicUrl,
+          file_type:
+            selectedFile.type,
+          file_size:
+            selectedFile.size,
+        });
+
+      if (databaseError) {
+        console.error(
+          "DATABASE FILE ERROR:",
+          databaseError
+        );
+
+        alert(
+          "The file was uploaded but could not be saved."
+        );
+
+        return;
+      }
+
+      setSelectedFile(
+        null
+      );
+
+      await loadFiles();
+    } catch (error) {
+      console.error(
+        "UPLOAD FILE ERROR:",
+        error
+      );
+
+      alert(
+        "Something went wrong while uploading the file."
+      );
+    } finally {
+      setUploadingFile(false);
+    }
+  }
+
+  async function deleteFile(
+    file: ChamberFile
+  ) {
+    if (
+      file.uploaded_by !==
+      currentUserId
+    ) {
+      return;
+    }
+
+    const confirmed =
+      window.confirm(
+        `Delete "${file.file_name}"?`
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const { error } =
+      await supabase
+        .from("files")
+        .delete()
+        .eq(
+          "id",
+          file.id
+        );
+
+    if (error) {
+      console.error(
+        "DELETE FILE ERROR:",
+        error
+      );
+
+      alert(
+        error.message
+      );
+
+      return;
+    }
+
+    await loadFiles();
+  }
+
+  function formatFileSize(
+    size: number | null
+  ) {
+    if (!size) {
+      return "Unknown size";
+    }
+
+    if (size < 1024) {
+      return `${size} B`;
+    }
+
+    if (size < 1024 * 1024) {
+      return `${(
+        size / 1024
+      ).toFixed(1)} KB`;
+    }
+
+    return `${(
+      size /
+      (1024 * 1024)
+    ).toFixed(1)} MB`;
+  }
+
   function handleSectionChange(
     section: ChamberSection
   ) {
-    setActiveSection(section);
-  }
-
-  /*
-   * LOADING
-   */
-  if (loading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-950">
-        <p className="text-xl font-semibold text-white">
-          Loading Chamber...
-        </p>
-      </main>
+    setActiveSection(
+      section
     );
   }
 
-  /*
-   * ACCESS DENIED
-   */
-  if (!authorized) {
+  function handleSidebarToggle() {
+    setShowSidebar(
+      (previous) =>
+        !previous
+    );
+  }
+
+  if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-950">
+      <main className="flex min-h-screen items-center justify-center bg-slate-950 px-6">
         <div className="text-center">
 
-          <h1 className="text-4xl font-bold text-white">
-            Access Denied
-          </h1>
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-slate-700 border-t-blue-500" />
 
           <p className="mt-4 text-slate-400">
-            You are not a member of this Chamber.
+            Loading Chamber...
           </p>
-
-          <button
-            type="button"
-            onClick={() =>
-              router.push("/join")
-            }
-            className="mt-8 rounded-xl bg-blue-600 px-8 py-3 font-semibold text-white hover:bg-blue-700"
-          >
-            Join a Chamber
-          </button>
 
         </div>
       </main>
     );
   }
 
-  /*
-   * CHAMBER NOT FOUND
-   */
-  if (!chamber) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-950">
-        <p className="text-xl text-white">
-          Chamber not found.
-        </p>
-      </main>
-    );
+  if (
+    !authorized ||
+    !chamber
+  ) {
+    return null;
   }
 
-  const isCallStarter =
-    activeCall?.started_by ===
-    currentUserId;
-
   return (
-    <main className="flex min-h-screen overflow-hidden bg-slate-950">
-
-      {/* =========================================
-          LEFT SIDEBAR
-          ========================================= */}
+    <main className="flex h-screen overflow-hidden bg-slate-950 text-white">
 
       <Sidebar
         activeSection={
@@ -632,167 +813,103 @@ export default function ChamberPage() {
         collapsed={
           !showSidebar
         }
-        onToggle={() =>
-          setShowSidebar(
-            (value) => !value
-          )
+        onToggle={
+          handleSidebarToggle
         }
       />
 
-      {/* =========================================
-          MAIN CENTER AREA
-          ========================================= */}
-
-      <section className="flex min-w-0 flex-1 flex-col">
-
-        {/* TOPBAR */}
+      <div className="flex min-w-0 flex-1 flex-col">
 
         <Topbar />
 
-        {/* =====================================
-            CHAMBER HEADER
-            ===================================== */}
+        <div className="flex min-h-0 flex-1 flex-col">
 
-        <div className="flex items-center justify-between gap-6 px-8 pt-6">
+          <div className="flex-shrink-0 border-b border-slate-800 bg-slate-900 px-5 py-4 sm:px-6">
 
-          <div className="min-w-0">
+            <div className="flex flex-wrap items-center justify-between gap-4">
 
-            <h1 className="truncate text-3xl font-bold text-white">
-              {chamber.chamber_name}
-            </h1>
+              <div className="min-w-0">
 
-            <p className="mt-2 truncate text-slate-400">
-              {chamber.description}
-            </p>
+                <h1 className="truncate text-xl font-bold text-white sm:text-2xl">
+                  {chamber.chamber_name}
+                </h1>
 
-          </div>
+                {chamber.description && (
+                  <p className="mt-1 line-clamp-2 text-sm text-slate-400">
+                    {chamber.description}
+                  </p>
+                )}
 
-          {/* RIGHT CONTROLS */}
+              </div>
 
-          <div className="flex shrink-0 items-center gap-3">
+              <div className="flex shrink-0 items-center gap-2">
 
-            {/* START CALL */}
-
-            {!activeCall && (
-              <button
-                type="button"
-                onClick={
-                  startCall
-                }
-                disabled={
-                  callLoading
-                }
-                title="Start call"
-                className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 font-semibold text-white shadow-lg transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <span className="text-lg">
-                  📞
-                </span>
-
-                <span>
-                  {callLoading
-                    ? "Starting..."
-                    : "Start Call"}
-                </span>
-              </button>
-            )}
-
-            {/* JOIN CALL */}
-
-            {activeCall &&
-              !isCallStarter && (
-                <button
-                  type="button"
-                  onClick={
-                    joinCall
-                  }
-                  title="Join ongoing call"
-                  className="flex items-center gap-2 rounded-xl bg-green-600 px-5 py-3 font-semibold text-white shadow-lg transition hover:bg-green-700"
-                >
-                  <span className="text-lg">
-                    📞
-                  </span>
-
-                  <span>
-                    Join Call
-                  </span>
-                </button>
-              )}
-
-            {/* CALL STARTER */}
-
-            {activeCall &&
-              isCallStarter && (
-                <button
-                  type="button"
-                  onClick={
-                    joinCall
-                  }
-                  title="Return to ongoing call"
-                  className="flex items-center gap-2 rounded-xl bg-red-600 px-5 py-3 font-semibold text-white shadow-lg transition hover:bg-red-700"
-                >
-                  <span className="text-lg">
-                    🔴
-                  </span>
-
-                  <span>
-                    Call Ongoing
-                  </span>
-                </button>
-              )}
-
-          </div>
-        </div>
-
-        {/* =====================================
-            ACTIVE CALL NOTICE
-            ===================================== */}
-
-        {activeCall && (
-          <div className="mx-8 mt-4 flex items-center justify-between rounded-xl border border-green-800/50 bg-green-950/40 px-4 py-3">
-
-            <div className="flex items-center gap-3">
-
-              <span className="h-3 w-3 animate-pulse rounded-full bg-green-500" />
-
-              <div>
-
-                <p className="font-semibold text-green-300">
-                  Call Ongoing
-                </p>
-
-                <p className="text-sm text-green-400/70">
-                  A call is currently active in this Chamber.
-                </p>
+                {activeCall ? (
+                  <button
+                    type="button"
+                    onClick={
+                      joinCall
+                    }
+                    className="rounded-xl bg-green-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-green-700"
+                  >
+                    📞 Join Call
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={
+                      startCall
+                    }
+                    disabled={
+                      callLoading
+                    }
+                    className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {callLoading
+                      ? "Starting..."
+                      : "📞 Start Call"}
+                  </button>
+                )}
 
               </div>
 
             </div>
 
-            <button
-              type="button"
-              onClick={
-                joinCall
-              }
-              className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700"
-            >
-              Join
-            </button>
-
           </div>
-        )}
 
-        {/* =====================================
-            MAIN CONTENT
-            ===================================== */}
+          {activeCall && (
+            <div className="flex-shrink-0 border-b border-green-900/50 bg-green-950/30 px-5 py-3 sm:px-6">
 
-        <div className="mt-6 flex min-h-0 flex-1 overflow-hidden">
+              <div className="flex flex-wrap items-center justify-between gap-3">
 
-          <div className="min-w-0 flex-1 overflow-hidden">
+                <div>
 
-            {/* ===============================
-                GENERAL CHAT
-                =============================== */}
+                  <p className="font-semibold text-green-300">
+                    📞 Chamber call is in progress
+                  </p>
+
+                  <p className="mt-1 text-xs text-green-400/80">
+                    A member is currently in a live Chamber call.
+                  </p>
+
+                </div>
+
+                <button
+                  type="button"
+                  onClick={
+                    joinCall
+                  }
+                  className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700"
+                >
+                  Join Call
+                </button>
+
+              </div>
+
+            </div>
+          )}
+
+          <div className="min-h-0 flex-1">
 
             {activeSection ===
               "chat" && (
@@ -803,144 +920,275 @@ export default function ChamberPage() {
               />
             )}
 
-            {/* ===============================
-                ANNOUNCEMENTS
-                =============================== */}
-
             {activeSection ===
               "announcements" && (
-              <div className="h-full overflow-y-auto p-6">
-
-                <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-
-                  <h2 className="text-2xl font-bold text-white">
-                    Announcements
-                  </h2>
-
-                  <p className="mt-2 text-slate-400">
-                    Chamber announcements will appear here.
-                  </p>
-
-                </div>
-
-              </div>
+              <Announcements
+                chamberId={
+                  chamber.id
+                }
+              />
             )}
-
-            {/* ===============================
-                MEMBERS
-                =============================== */}
 
             {activeSection ===
               "members" && (
-              <div className="h-full overflow-y-auto p-6">
+              <div className="h-full overflow-y-auto bg-slate-950 p-6">
 
-                <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+                <div className="mx-auto max-w-5xl">
 
-                  <div className="flex items-center justify-between">
+                  <div className="mb-6">
 
-                    <div>
+                    <h2 className="text-2xl font-bold text-white">
+                      Chamber Members
+                    </h2>
 
-                      <h2 className="text-2xl font-bold text-white">
-                        Chamber Members
-                      </h2>
-
-                      <p className="mt-2 text-slate-400">
-                        Members of this Chamber.
-                      </p>
-
-                    </div>
-
-                    <div className="rounded-xl bg-blue-600 px-4 py-2 font-semibold text-white">
-                      {members.length}
-                    </div>
+                    <p className="mt-1 text-sm text-slate-400">
+                      People who belong to this Chamber.
+                    </p>
 
                   </div>
 
-                  {/* MEMBERS LOADING */}
-
-                  {membersLoading && (
-                    <div className="mt-6 rounded-xl bg-slate-800 p-5">
+                  {membersLoading ? (
+                    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center">
 
                       <p className="text-slate-400">
                         Loading members...
                       </p>
 
                     </div>
-                  )}
+                  ) : membersError ? (
+                    <div className="rounded-2xl border border-red-900/50 bg-red-950/20 p-6">
 
-                  {/* MEMBERS ERROR */}
+                      <p className="text-red-400">
+                        {membersError}
+                      </p>
 
-                  {!membersLoading &&
-                    membersError && (
-                      <div className="mt-6 rounded-xl border border-red-800 bg-red-950/40 p-5">
+                    </div>
+                  ) : members.length ===
+                    0 ? (
+                    <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900 p-8 text-center">
 
-                        <p className="font-medium text-red-300">
-                          Unable to load members.
-                        </p>
+                      <p className="text-slate-400">
+                        No members found.
+                      </p>
 
-                        <p className="mt-2 text-sm text-red-400">
-                          {membersError}
-                        </p>
+                    </div>
+                  ) : (
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 
-                      </div>
-                    )}
+                      {members.map(
+                        (
+                          member
+                        ) => (
+                          <div
+                            key={
+                              member.id
+                            }
+                            className="rounded-2xl border border-slate-800 bg-slate-900 p-5"
+                          >
 
-                  {/* NO MEMBERS */}
+                            <div className="flex items-center gap-4">
 
-                  {!membersLoading &&
-                    !membersError &&
-                    members.length === 0 && (
-                      <div className="mt-6 rounded-xl bg-slate-800 p-5">
-
-                        <p className="text-slate-400">
-                          No members found in this Chamber.
-                        </p>
-
-                      </div>
-                    )}
-
-                  {/* MEMBER LIST */}
-
-                  {!membersLoading &&
-                    !membersError &&
-                    members.length > 0 && (
-                      <div className="mt-6 grid gap-4 sm:grid-cols-2">
-
-                        {members.map(
-                          (member) => (
-                            <div
-                              key={
-                                member.id
-                              }
-                              className="flex items-center gap-4 rounded-2xl border border-slate-700 bg-slate-800 p-4 transition hover:border-slate-600 hover:bg-slate-750"
-                            >
-
-                              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-600 text-lg font-bold text-white">
-
+                              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-600/20 font-bold text-blue-400">
                                 {member.full_name
-                                  .charAt(
+                                  ?.charAt(
                                     0
                                   )
-                                  .toUpperCase()}
-
+                                  ?.toUpperCase() ||
+                                  "C"}
                               </div>
 
-                              <div className="min-w-0 flex-1">
+                              <div className="min-w-0">
 
                                 <p className="truncate font-semibold text-white">
                                   {member.full_name}
                                 </p>
 
-                                <p className="mt-1 text-sm text-slate-400">
+                                <p className="mt-1 text-xs capitalize text-slate-500">
                                   {member.role}
                                 </p>
 
                               </div>
 
-                              <div
-                                className="h-3 w-3 shrink-0 rounded-full bg-green-500"
-                                title="Online"
-                              />
+                            </div>
+
+                          </div>
+                        )
+                      )}
+
+                    </div>
+                  )}
+
+                </div>
+
+              </div>
+            )}
+
+            {activeSection ===
+              "files" && (
+              <div className="h-full overflow-y-auto bg-slate-950 p-6">
+
+                <div className="mx-auto max-w-5xl">
+
+                  <div className="mb-6">
+
+                    <h2 className="text-2xl font-bold text-white">
+                      Chamber Files
+                    </h2>
+
+                    <p className="mt-1 text-sm text-slate-400">
+                      Upload and access files shared in this Chamber.
+                    </p>
+
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+
+                    <h3 className="text-lg font-semibold text-white">
+                      Upload File
+                    </h3>
+
+                    <p className="mt-1 text-sm text-slate-500">
+                      Maximum file size: 10 MB.
+                    </p>
+
+                    <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+
+                      <input
+                        type="file"
+                        onChange={(
+                          event
+                        ) =>
+                          setSelectedFile(
+                            event.target.files?.[0] ||
+                              null
+                          )
+                        }
+                        className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-800 p-3 text-sm text-slate-300 file:mr-4 file:rounded-lg file:border-0 file:bg-blue-600 file:px-3 file:py-2 file:font-semibold file:text-white hover:file:bg-blue-700"
+                      />
+
+                      <button
+                        type="button"
+                        onClick={
+                          uploadFile
+                        }
+                        disabled={
+                          uploadingFile ||
+                          !selectedFile
+                        }
+                        className="rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {uploadingFile
+                          ? "Uploading..."
+                          : "Upload File"}
+                      </button>
+
+                    </div>
+
+                    {selectedFile && (
+                      <p className="mt-3 text-sm text-slate-400">
+                        Selected:{" "}
+                        {selectedFile.name}
+                      </p>
+                    )}
+
+                  </div>
+
+                  <div className="mt-6">
+
+                    {filesLoading ? (
+                      <div className="rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center">
+
+                        <p className="text-slate-400">
+                          Loading files...
+                        </p>
+
+                      </div>
+                    ) : files.length ===
+                      0 ? (
+                      <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900 p-8 text-center">
+
+                        <div className="text-5xl">
+                          📁
+                        </div>
+
+                        <p className="mt-4 font-semibold text-white">
+                          No files yet
+                        </p>
+
+                        <p className="mt-2 text-sm text-slate-500">
+                          Uploaded Chamber files will appear here.
+                        </p>
+
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+
+                        {files.map(
+                          (
+                            file
+                          ) => (
+                            <div
+                              key={
+                                file.id
+                              }
+                              className="flex flex-col gap-4 rounded-2xl border border-slate-800 bg-slate-900 p-5 sm:flex-row sm:items-center sm:justify-between"
+                            >
+
+                              <div className="flex min-w-0 items-center gap-4">
+
+                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600/10 text-xl">
+                                  📄
+                                </div>
+
+                                <div className="min-w-0">
+
+                                  <p className="truncate font-semibold text-white">
+                                    {file.file_name}
+                                  </p>
+
+                                  <p className="mt-1 text-xs text-slate-500">
+                                    {formatFileSize(
+                                      file.file_size
+                                    )}{" "}
+                                    •{" "}
+                                    {new Date(
+                                      file.created_at
+                                    ).toLocaleString()}
+                                  </p>
+
+                                </div>
+
+                              </div>
+
+                              <div className="flex shrink-0 items-center gap-2">
+
+                                <a
+                                  href={
+                                    file.file_url
+                                  }
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="rounded-lg bg-blue-600/10 px-4 py-2 text-sm font-semibold text-blue-400 transition hover:bg-blue-600/20"
+                                >
+                                  Open
+                                </a>
+
+                                {file.uploaded_by ===
+                                  currentUserId && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      deleteFile(
+                                        file
+                                      )
+                                    }
+                                    className="rounded-lg bg-red-600/10 px-4 py-2 text-sm font-semibold text-red-400 transition hover:bg-red-600/20"
+                                  >
+                                    Delete
+                                  </button>
+                                )}
+
+                              </div>
 
                             </div>
                           )
@@ -949,122 +1197,78 @@ export default function ChamberPage() {
                       </div>
                     )}
 
-                </div>
-
-              </div>
-            )}
-
-            {/* ===============================
-                FILES
-                =============================== */}
-
-            {activeSection ===
-              "files" && (
-              <div className="h-full overflow-y-auto p-6">
-
-                <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-
-                  <h2 className="text-2xl font-bold text-white">
-                    Files
-                  </h2>
-
-                  <p className="mt-2 text-slate-400">
-                    Chamber files will appear here.
-                  </p>
+                  </div>
 
                 </div>
 
               </div>
             )}
-
-            {/* ===============================
-                EVENTS
-                =============================== */}
 
             {activeSection ===
               "events" && (
-              <div className="h-full overflow-y-auto p-6">
-
-                <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-
-                  <h2 className="text-2xl font-bold text-white">
-                    Events
-                  </h2>
-
-                  <p className="mt-2 text-slate-400">
-                    Chamber events will appear here.
-                  </p>
-
-                </div>
-
-              </div>
+              <Events
+                chamberId={
+                  chamber.id
+                }
+              />
             )}
-
-            {/* ===============================
-                POLLS
-                =============================== */}
 
             {activeSection ===
               "polls" && (
-              <div className="h-full overflow-y-auto p-6">
-
-                <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-
-                  <h2 className="text-2xl font-bold text-white">
-                    Polls
-                  </h2>
-
-                  <p className="mt-2 text-slate-400">
-                    Chamber polls will appear here.
-                  </p>
-
-                </div>
-              </div>
+              <Polls
+                chamberId={
+                  chamber.id
+                }
+              />
             )}
-
-            {/* ===============================
-                CHAMBER AI
-                =============================== */}
 
             {activeSection ===
               "ai" && (
-              <div className="h-full overflow-hidden p-6">
-
-                <AIAssistant
-                  chamberId={
-                    chamberId
-                  }
-                  chamberName={
-                    chamber.chamber_name
-                  }
-                  chamberDescription={
-                    chamber.description
-                  }
-                  memberCount={
-                    members.length
-                  }
-                />
-
-              </div>
+              <AIAssistant
+                chamberId={
+                  chamber.id
+                }
+                chamberName={
+                  chamber.chamber_name
+                }
+                chamberDescription={
+                  chamber.description
+                }
+                memberCount={
+                  members.length
+                }
+              />
             )}
-
-            {/* ===============================
-                SETTINGS
-                =============================== */}
 
             {activeSection ===
               "settings" && (
-              <div className="h-full overflow-y-auto p-6">
+              <div className="h-full overflow-y-auto bg-slate-950 p-6">
 
-                <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+                <div className="mx-auto max-w-4xl">
 
-                  <h2 className="text-2xl font-bold text-white">
-                    Settings
-                  </h2>
+                  <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
 
-                  <p className="mt-2 text-slate-400">
-                    Chamber settings will appear here.
-                  </p>
+                    <h2 className="text-2xl font-bold text-white">
+                      Chamber Settings
+                    </h2>
+
+                    <p className="mt-2 text-slate-400">
+                      Chamber settings and management options.
+                    </p>
+
+                    <div className="mt-6 rounded-xl border border-slate-800 bg-slate-950 p-5">
+
+                      <p className="text-sm text-slate-400">
+                        Chamber:
+                      </p>
+
+                      <p className="mt-1 font-semibold text-white">
+                        {chamber.chamber_name}
+                      </p>
+
+                    </div>
+
+                  </div>
 
                 </div>
 
@@ -1075,7 +1279,7 @@ export default function ChamberPage() {
 
         </div>
 
-      </section>
+      </div>
 
     </main>
   );
