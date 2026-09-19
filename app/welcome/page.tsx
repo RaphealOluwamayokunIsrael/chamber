@@ -19,7 +19,7 @@ import {
 
 type Chamber = {
   id: string;
-  name: string;
+  chamber_name: string;
   description: string | null;
   created_at?: string;
 };
@@ -133,7 +133,7 @@ export default function WelcomePage() {
   }, []);
 
   /* =========================
-     LOAD USER + CHAMBERS
+     LOAD USER + MY CHAMBERS
   ========================= */
 
   useEffect(() => {
@@ -187,13 +187,13 @@ export default function WelcomePage() {
       }
 
       /* =========================
-         GET CHAMBERS
+         GET MY CHAMBERS
       ========================= */
 
       const { data: chamberData, error: chamberError } =
         await supabase
           .from("chambers")
-          .select("id, name, description, created_at")
+          .select("id, chamber_name, description, created_at")
           .in("id", chamberIds)
           .order("created_at", { ascending: false });
 
@@ -208,8 +208,11 @@ export default function WelcomePage() {
         return;
       }
 
-      // Show only the four most recent Chambers
-      setChambers((chamberData || []).slice(0, 4));
+      /* =========================
+         SHOW ALL MY CHAMBERS
+      ========================= */
+
+      setChambers(chamberData || []);
 
       setLoadingChambers(false);
     }
@@ -557,7 +560,7 @@ export default function WelcomePage() {
 
             ) : (
 
-              /* ================= FOUR CHAMBERS ================= */
+              /* ================= ALL MY CHAMBERS ================= */
 
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
 
@@ -586,7 +589,7 @@ export default function WelcomePage() {
                         {/* Name */}
 
                         <h3 className="line-clamp-2 text-xl font-bold text-gray-900 dark:text-white">
-                          {chamber.name}
+                          {chamber.chamber_name}
                         </h3>
 
                         {/* Description */}
