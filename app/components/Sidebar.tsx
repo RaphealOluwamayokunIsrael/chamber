@@ -173,7 +173,7 @@ export default function Sidebar({
       className={[
         "absolute inset-y-0 left-0 z-50 flex h-full flex-col transition-all duration-300 ease-in-out",
         collapsed
-          ? "w-20 bg-slate-950 text-white shadow-xl"
+          ? "w-20 bg-transparent text-slate-900"
           : "w-72 bg-transparent text-slate-900",
       ].join(" ")}
     >
@@ -182,7 +182,7 @@ export default function Sidebar({
         className={[
           "flex h-16 shrink-0 items-center",
           collapsed
-            ? "justify-center border-b border-slate-800"
+            ? "justify-center"
             : "justify-between px-5",
         ].join(" ")}
       >
@@ -209,7 +209,7 @@ export default function Sidebar({
           className={[
             "flex shrink-0 items-center justify-center rounded-xl transition",
             collapsed
-              ? "h-10 w-10 text-slate-300 hover:bg-slate-800 hover:text-white"
+              ? "h-10 w-10 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               : "h-10 w-10 text-slate-500 hover:bg-slate-100 hover:text-slate-900",
           ].join(" ")}
         >
@@ -262,7 +262,7 @@ export default function Sidebar({
                         ? "bg-blue-600 text-white shadow-sm"
                         : "border-l-2 border-blue-600 text-blue-600"
                       : collapsed
-                        ? "text-slate-300 hover:bg-slate-800 hover:text-white"
+                        ? "text-slate-600 hover:bg-slate-100/70 hover:text-slate-900"
                         : "text-slate-600 hover:text-blue-600",
                   ].join(" ")}
                 >
@@ -310,7 +310,7 @@ export default function Sidebar({
                     ? "bg-emerald-600 text-white shadow-sm hover:bg-emerald-700"
                     : "border-l-2 border-emerald-600 text-emerald-600 hover:text-emerald-700"
                   : collapsed
-                    ? "text-slate-300 hover:bg-slate-800 hover:text-white"
+                    ? "text-slate-600 hover:bg-slate-100/70 hover:text-slate-900"
                     : "text-slate-600 hover:text-blue-600",
                 callLoading
                   ? "cursor-not-allowed opacity-60"
@@ -365,7 +365,7 @@ export default function Sidebar({
                   ? "bg-blue-600 text-white shadow-sm"
                   : "border-l-2 border-blue-600 text-blue-600"
                 : collapsed
-                  ? "text-slate-300 hover:bg-slate-800 hover:text-white"
+                  ? "text-slate-600 hover:bg-slate-100/70 hover:text-slate-900"
                   : "text-slate-600 hover:text-blue-600",
             ].join(" ")}
           >
@@ -385,7 +385,7 @@ export default function Sidebar({
         className={[
           "shrink-0",
           collapsed
-            ? "border-t border-slate-800 px-3 py-4"
+            ? "px-3 py-4"
             : "px-4 pb-5",
         ].join(" ")}
       >
