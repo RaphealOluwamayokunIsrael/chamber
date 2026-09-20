@@ -321,7 +321,9 @@ export default function ChamberPage() {
 
       setMembers(
         memberRows.map(
-          (member) => ({
+          (
+            member
+          ) => ({
             id: member.id,
             user_id:
               member.user_id,
@@ -765,7 +767,6 @@ export default function ChamberPage() {
   ) {
     setActiveSection(section);
 
-    // On mobile, close the overlay after selecting a section.
     if (
       typeof window !== "undefined" &&
       window.innerWidth < 768
@@ -806,17 +807,21 @@ export default function ChamberPage() {
     <main className="relative flex h-screen min-h-0 overflow-hidden bg-slate-100 text-slate-900">
 
       {/* TOPBAR + MAIN WORKSPACE */}
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="relative flex min-w-0 flex-1 flex-col">
 
         <Topbar
           chamberName={
             chamber.chamber_name
           }
+          onSidebarToggle={
+            handleSidebarToggle
+          }
         />
 
-        <div className="min-h-0 flex-1 p-2 sm:p-3">
+        {/* MAIN WORKSPACE */}
+        <div className="relative min-h-0 flex-1 p-2 sm:p-3">
 
-          <div className="h-full min-h-0 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+          <div className="relative h-full min-h-0 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
 
             {activeSection ===
               "chat" && (

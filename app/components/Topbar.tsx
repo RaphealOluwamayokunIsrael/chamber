@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  Menu,
+  Building2,
   PanelTopClose,
   PanelTopOpen,
 } from "lucide-react";
@@ -9,32 +9,41 @@ import { useState } from "react";
 
 type TopbarProps = {
   chamberName?: string;
+  onSidebarToggle?: () => void;
 };
 
 export default function Topbar({
   chamberName = "Chamber",
+  onSidebarToggle,
 }: TopbarProps) {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
     <header
-      className={`relative z-20 flex shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 transition-all duration-300 sm:px-6 ${
+      className={`relative z-40 flex shrink-0 items-center border-b border-slate-200 bg-white transition-all duration-300 ${
         collapsed ? "h-12" : "h-16"
       }`}
     >
-      <div className="flex min-w-0 items-center gap-3">
-        <div
-          className={`flex shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 transition-all ${
-            collapsed ? "h-8 w-8" : "h-9 w-9"
-          }`}
-        >
-          <Menu
-            size={collapsed ? 17 : 19}
-          />
-        </div>
+      {/* Chamber sidebar button */}
+      <button
+        type="button"
+        onClick={onSidebarToggle}
+        aria-label="Open Chamber sidebar"
+        title="Open Chamber sidebar"
+        className={`ml-4 flex shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 transition hover:bg-blue-100 hover:text-blue-700 sm:ml-6 ${
+          collapsed ? "h-8 w-8" : "h-9 w-9"
+        }`}
+      >
+        <Building2
+          size={collapsed ? 17 : 19}
+          strokeWidth={2}
+        />
+      </button>
 
+      {/* Centrally positioned Chamber name */}
+      <div className="pointer-events-none absolute left-1/2 max-w-[60%] -translate-x-1/2">
         <h1
-          className={`truncate font-bold text-slate-900 transition-all ${
+          className={`truncate text-center font-bold text-slate-900 transition-all ${
             collapsed
               ? "text-sm"
               : "text-base sm:text-lg"
@@ -44,6 +53,7 @@ export default function Topbar({
         </h1>
       </div>
 
+      {/* Topbar collapse button */}
       <button
         type="button"
         onClick={() =>
@@ -59,7 +69,7 @@ export default function Topbar({
             ? "Expand topbar"
             : "Collapse topbar"
         }
-        className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-blue-600"
+        className="ml-auto mr-4 flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-blue-600 sm:mr-6"
       >
         {collapsed ? (
           <PanelTopOpen size={18} />
