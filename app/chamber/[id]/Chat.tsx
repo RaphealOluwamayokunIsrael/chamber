@@ -56,9 +56,9 @@ export default function Chat({
     useRef<HTMLTextAreaElement>(null);
 
   const typingTimeoutRef =
-    useRef<ReturnType<
-      typeof setTimeout
-    > | null>(null);
+    useRef<ReturnType<typeof setTimeout> | null>(
+      null
+    );
 
   const typingChannelRef =
     useRef<ReturnType<
@@ -84,10 +84,7 @@ export default function Chat({
       if (!mounted) return;
 
       if (user) {
-        setCurrentUserId(
-          user.id
-        );
-
+        setCurrentUserId(user.id);
         currentUserIdRef.current =
           user.id;
       }
@@ -99,9 +96,7 @@ export default function Chat({
 
     const messageChannel =
       supabase
-        .channel(
-          `messages-${chamberId}`
-        )
+        .channel(`messages-${chamberId}`)
         .on(
           "postgres_changes",
           {
@@ -114,14 +109,12 @@ export default function Chat({
             loadMessages();
           }
         )
-        .subscribe(
-          (status) => {
-            console.log(
-              "Message realtime:",
-              status
-            );
-          }
-        );
+        .subscribe((status) => {
+          console.log(
+            "Message realtime:",
+            status
+          );
+        });
 
     const typingChannel =
       supabase.channel(
@@ -176,9 +169,7 @@ export default function Chat({
                     payload.userId
                 );
 
-              if (
-                payload.typing
-              ) {
+              if (payload.typing) {
                 if (existing) {
                   return previous.map(
                     (user) =>
@@ -216,14 +207,12 @@ export default function Chat({
           );
         }
       )
-      .subscribe(
-        (status) => {
-          console.log(
-            "Typing realtime:",
-            status
-          );
-        }
-      );
+      .subscribe((status) => {
+        console.log(
+          "Typing realtime:",
+          status
+        );
+      });
 
     return () => {
       mounted = false;
@@ -275,15 +264,12 @@ export default function Chat({
         );
 
         setLoading(false);
-
         return;
       }
 
       if (!data) {
         setMessages([]);
-
         setLoading(false);
-
         return;
       }
 
@@ -330,8 +316,7 @@ export default function Chat({
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView(
           {
-            behavior:
-              "smooth",
+            behavior: "smooth",
           }
         );
       }, 100);
@@ -357,13 +342,10 @@ export default function Chat({
     const profile =
       profiles.find(
         (item) =>
-          item.id ===
-          user.id
+          item.id === user.id
       );
 
-    if (
-      profile?.full_name
-    ) {
+    if (profile?.full_name) {
       return profile.full_name;
     }
 
@@ -443,22 +425,15 @@ export default function Chat({
     }
 
     if (!value.trim()) {
-      broadcastTyping(
-        false
-      );
-
+      broadcastTyping(false);
       return;
     }
 
-    broadcastTyping(
-      true
-    );
+    broadcastTyping(true);
 
     typingTimeoutRef.current =
       setTimeout(() => {
-        broadcastTyping(
-          false
-        );
+        broadcastTyping(false);
       }, 2000);
   }
 
@@ -500,15 +475,12 @@ export default function Chat({
         "SEND MESSAGE ERROR:",
         error
       );
-
       return;
     }
 
     setNewMessage("");
 
-    await broadcastTyping(
-      false
-    );
+    await broadcastTyping(false);
 
     if (
       typingTimeoutRef.current
@@ -534,7 +506,6 @@ export default function Chat({
       !e.shiftKey
     ) {
       e.preventDefault();
-
       sendMessage();
     }
   }
@@ -545,8 +516,7 @@ export default function Chat({
     const profile =
       profiles.find(
         (p) =>
-          p.id ===
-          senderId
+          p.id === senderId
       );
 
     return (
@@ -583,130 +553,222 @@ export default function Chat({
   }
 
   return (
-    <div className="flex h-full flex-col bg-slate-950">
+    <div className="flex h-full flex-col bg-white">
+
+      {/* Chat Header */}
+      <div className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
+
+        <div className="flex items-center gap-3">
+
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M21 11.5a8.38 8.38 0 0 1-9 8.5 8.5 8.5 0 0 1-7-3.5L3 21l1.5-4A8.5 8.5 0 1 1 21 11.5Z" />
+            </svg>
+          </div>
+
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900">
+              General Chat
+            </h2>
+
+            <p className="text-xs text-slate-500">
+              Chamber conversation
+            </p>
+          </div>
+
+        </div>
+
+        <div className="hidden items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-600 sm:flex">
+          <span className="h-2 w-2 rounded-full bg-blue-500" />
+          Live
+        </div>
+
+      </div>
 
       {/* Messages */}
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-6">
+      <div className="min-h-0 flex-1 overflow-y-auto bg-white px-4 py-6 sm:px-6">
 
         {loading ? (
-          <p className="text-slate-400">
-            Loading messages...
-          </p>
+          <div className="flex h-full items-center justify-center">
+            <div className="flex items-center gap-3 text-sm text-slate-500">
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-200 border-t-blue-600" />
+              Loading messages...
+            </div>
+          </div>
         ) : messages.length ===
           0 ? (
           <div className="flex h-full items-center justify-center">
-            <p className="text-slate-500">
-              No messages yet. Start the conversation.
-            </p>
+
+            <div className="text-center">
+
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                <svg
+                  width="25"
+                  height="25"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M21 11.5a8.38 8.38 0 0 1-9 8.5 8.5 8.5 0 0 1-7-3.5L3 21l1.5-4A8.5 8.5 0 1 1 21 11.5Z" />
+                </svg>
+              </div>
+
+              <h3 className="text-sm font-semibold text-slate-900">
+                Start the conversation
+              </h3>
+
+              <p className="mt-1 text-sm text-slate-500">
+                Send the first message to your Chamber.
+              </p>
+
+            </div>
+
           </div>
         ) : (
-          messages.map(
-            (msg) => (
-              <MessageBubble
-                key={
-                  msg.id
-                }
-                message={
-                  msg.message
-                }
-                sender={getSenderName(
-                  msg.sender_id
-                )}
-                createdAt={
-                  msg.created_at
-                }
-                isMine={
-                  msg.sender_id ===
-                  currentUserId
-                }
-              />
-            )
-          )
-        )}
+          <div className="mx-auto w-full max-w-4xl space-y-5">
 
-        <div
-          ref={
-            messagesEndRef
-          }
-        />
+            {messages.map(
+              (msg) => (
+                <MessageBubble
+                  key={msg.id}
+                  message={
+                    msg.message
+                  }
+                  sender={getSenderName(
+                    msg.sender_id
+                  )}
+                  createdAt={
+                    msg.created_at
+                  }
+                  isMine={
+                    msg.sender_id ===
+                    currentUserId
+                  }
+                />
+              )
+            )}
+
+            <div
+              ref={
+                messagesEndRef
+              }
+            />
+
+          </div>
+        )}
 
       </div>
 
       {/* Composer */}
-      <div className="flex-shrink-0 border-t border-slate-800 bg-slate-900 p-5">
+      <div className="shrink-0 border-t border-slate-200 bg-white px-4 py-4 sm:px-6">
 
-        {/* Messenger-style typing indicator */}
-        {typingUsers.length >
-          0 && (
-          <div className="mb-3 flex items-end gap-2">
+        <div className="mx-auto w-full max-w-4xl">
 
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-800 text-xs font-bold text-blue-400">
-              {typingUsers[0]?.name
-                ?.charAt(0)
-                ?.toUpperCase() ||
-                "C"}
-            </div>
+          {/* Typing Indicator */}
+          {typingUsers.length >
+            0 && (
+            <div className="mb-3 flex items-center gap-2">
 
-            <div className="flex flex-col items-start">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-50 text-xs font-semibold text-blue-600">
+                {typingUsers[0]?.name
+                  ?.charAt(0)
+                  ?.toUpperCase() ||
+                  "C"}
+              </div>
 
-              <span className="mb-1 ml-2 text-[11px] text-slate-500">
-                {getTypingLabel()}
-              </span>
+              <div className="flex items-center gap-2">
 
-              <div className="flex h-9 items-center gap-1 rounded-full bg-slate-800 px-3 shadow-sm">
+                <span className="text-xs text-slate-500">
+                  {getTypingLabel()}
+                </span>
 
-                <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.3s]" />
+                <div className="flex h-7 items-center gap-1 rounded-full bg-slate-100 px-2.5">
 
-                <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.15s]" />
+                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-400 [animation-delay:-0.3s]" />
 
-                <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400" />
+                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-400 [animation-delay:-0.15s]" />
+
+                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-400" />
+
+                </div>
 
               </div>
 
             </div>
+          )}
+
+          {/* Message Input */}
+          <div className="flex items-end gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-2 transition focus-within:border-blue-400 focus-within:bg-white focus-within:ring-4 focus-within:ring-blue-50">
+
+            <textarea
+              ref={
+                textareaRef
+              }
+              rows={1}
+              value={
+                newMessage
+              }
+              placeholder="Write a message..."
+              onChange={(
+                e
+              ) =>
+                handleTyping(
+                  e.target.value
+                )
+              }
+              onKeyDown={
+                handleKeyDown
+              }
+              className="min-h-[48px] flex-1 resize-none bg-transparent px-3 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-400"
+              style={{
+                maxHeight:
+                  "160px",
+              }}
+            />
+
+            <button
+              type="button"
+              onClick={
+                sendMessage
+              }
+              disabled={
+                !newMessage.trim()
+              }
+              aria-label="Send message"
+              className="mb-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+            >
+              <svg
+                width="19"
+                height="19"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M22 2 11 13" />
+                <path d="m22 2-7 20-4-9-9-4Z" />
+              </svg>
+            </button>
 
           </div>
-        )}
 
-        <textarea
-          ref={
-            textareaRef
-          }
-          rows={1}
-          value={
-            newMessage
-          }
-          placeholder="Type a message..."
-          onChange={(
-            e
-          ) =>
-            handleTyping(
-              e.target.value
-            )
-          }
-          onKeyDown={
-            handleKeyDown
-          }
-          className="w-full resize-none rounded-xl border border-slate-700 bg-slate-800 p-4 text-white outline-none placeholder:text-slate-500 focus:border-blue-500"
-          style={{
-            minHeight:
-              "48px",
-            maxHeight:
-              "160px",
-          }}
-        />
-
-        <div className="mt-4 flex justify-end">
-
-          <button
-            type="button"
-            onClick={
-              sendMessage
-            }
-            className="rounded-xl bg-blue-600 px-8 py-3 font-semibold text-white transition hover:bg-blue-700"
-          >
-            Send
-          </button>
+          <p className="mt-2 hidden text-[11px] text-slate-400 sm:block">
+            Press Enter to send · Shift + Enter for a new line
+          </p>
 
         </div>
 

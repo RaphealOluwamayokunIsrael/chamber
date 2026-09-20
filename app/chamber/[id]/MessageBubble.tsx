@@ -73,8 +73,10 @@ export default function MessageBubble({
   return (
     <div
       ref={ref}
-      className={`mb-4 flex transition-all duration-500 ease-out ${
-        isMine ? "justify-end" : "justify-start"
+      className={`flex transition-all duration-500 ease-out ${
+        isMine
+          ? "justify-end"
+          : "justify-start"
       } ${
         visible
           ? "translate-y-0 opacity-100"
@@ -82,31 +84,47 @@ export default function MessageBubble({
       }`}
     >
       <div
-        className={`max-w-[75%] rounded-2xl px-5 py-3 shadow-lg ${
+        className={`max-w-[85%] sm:max-w-[70%] ${
           isMine
-            ? "rounded-br-md bg-blue-600 text-white"
-            : "rounded-bl-md bg-slate-800 text-white"
+            ? "items-end"
+            : "items-start"
         }`}
       >
         {!isMine && (
-          <p className="mb-1 text-xs font-semibold text-blue-400">
-            {sender}
-          </p>
+          <div className="mb-1.5 flex items-center gap-2 px-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 text-[11px] font-bold text-blue-600">
+              {sender
+                ?.charAt(0)
+                ?.toUpperCase() || "C"}
+            </div>
+
+            <p className="text-xs font-semibold text-blue-600">
+              {sender}
+            </p>
+          </div>
         )}
 
-        <p className="whitespace-pre-wrap break-words">
-          {message}
-        </p>
-
-        <p
-          className={`mt-2 text-right text-[11px] ${
+        <div
+          className={`rounded-2xl px-4 py-3 sm:px-5 ${
             isMine
-              ? "text-blue-100"
-              : "text-slate-400"
+              ? "rounded-br-md bg-blue-600 text-white shadow-sm shadow-blue-100"
+              : "rounded-bl-md border border-slate-200 bg-white text-slate-800 shadow-sm"
           }`}
         >
-          {dateLabel} · {timeLabel}
-        </p>
+          <p className="whitespace-pre-wrap break-words text-sm leading-6">
+            {message}
+          </p>
+
+          <p
+            className={`mt-2 text-right text-[10px] ${
+              isMine
+                ? "text-blue-100"
+                : "text-slate-400"
+            }`}
+          >
+            {dateLabel} · {timeLabel}
+          </p>
+        </div>
       </div>
     </div>
   );
