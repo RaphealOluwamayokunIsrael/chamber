@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   MessageSquare,
   Users,
@@ -11,8 +12,10 @@ import {
   Settings,
   Menu,
   X,
+  PhoneCall,
+  Loader2,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+
 import { supabase } from "@/lib/supabase";
 
 export type ChamberSection =
@@ -25,11 +28,30 @@ export type ChamberSection =
   | "ai"
   | "settings";
 
+type ChamberCall = {
+  id: string;
+  chamber_id: string;
+  room_name: string;
+  started_by: string;
+  status: string;
+};
+
 type SidebarProps = {
   activeSection: ChamberSection;
-  onSectionChange: (section: ChamberSection) => void;
+  onSectionChange: (
+    section: ChamberSection
+  ) => void;
   collapsed: boolean;
   onToggle: () => void;
+
+  activeCall?: ChamberCall | null;
+  callLoading?: boolean;
+  onStartCall?: () => void;
+  onJoinCall?: () => void;
+};
+
+type Profile = {
+  full_name: string | null;
 };
 
 export default function Sidebar({
@@ -37,77 +59,54 @@ export default function Sidebar({
   onSectionChange,
   collapsed,
   onToggle,
+  activeCall,
+  callLoading = false,
+  onStartCall,
+  onJoinCall,
 }: SidebarProps) {
-  const [userName, setUserName] = useState("Chamber User");
-  const [initial, setInitial] = useState("C");
+  const [profile, setProfile] =
+    useState<Profile | null>(null);
 
   useEffect(() => {
-    async function loadCurrentUser() {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+    loadProfile();
+  }, []);
 
-        if (!user) {
-          return;
-        }
+  async function loadProfile() {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-        let name = "";
+      if (!user) {
+        return;
+      }
 
-        // First try the profiles table
-        const { data: profile, error: profileError } =
-          await supabase
-            .from("profiles")
-            .select("full_name")
-            .eq("id", user.id)
-            .maybeSingle();
+      const {
+        data,
+        error,
+      } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", user.id)
+        .maybeSingle();
 
-        if (profileError) {
-          console.error(
-            "SIDEBAR PROFILE ERROR:",
-            profileError
-          );
-        }
-
-        if (profile?.full_name?.trim()) {
-          name = profile.full_name.trim();
-        }
-
-        // Then try user metadata
-        if (!name) {
-          const metadataName =
-            user.user_metadata?.full_name ||
-            user.user_metadata?.name;
-
-          if (
-            typeof metadataName === "string" &&
-            metadataName.trim()
-          ) {
-            name = metadataName.trim();
-          }
-        }
-
-        // Finally use email username
-        if (!name && user.email) {
-          name = user.email.split("@")[0];
-        }
-
-        if (!name) {
-          name = "Chamber User";
-        }
-
-        setUserName(name);
-        setInitial(name.charAt(0).toUpperCase());
-      } catch (error) {
+      if (error) {
         console.error(
-          "SIDEBAR USER ERROR:",
+          "LOAD SIDEBAR PROFILE ERROR:",
           error
         );
-      }
-    }
 
-    loadCurrentUser();
-  }, []);
+        return;
+      }
+
+      setProfile(data);
+    } catch (error) {
+      console.error(
+        "SIDEBAR PROFILE ERROR:",
+        error
+      );
+    }
+  }
 
   const navigation = [
     {
@@ -145,123 +144,288 @@ export default function Sidebar({
       label: "Chamber AI",
       icon: Bot,
     },
-    {
-      id: "settings" as ChamberSection,
-      label: "Settings",
-      icon: Settings,
-    },
   ];
+
+  const displayName =
+    profile?.full_name ||
+    "Chamber Member";
+
+  const initial =
+    displayName
+      .charAt(0)
+      .toUpperCase() || "C";
+
+  const callAvailable =
+    Boolean(onStartCall) ||
+    Boolean(onJoinCall);
+
+  function handleCallClick() {
+    if (activeCall) {
+      onJoinCall?.();
+      return;
+    }
+
+    onStartCall?.();
+  }
 
   return (
     <aside
-      className={`relative flex h-screen shrink-0 flex-col border-r border-slate-800 bg-slate-950 transition-all duration-300 ${
-        collapsed ? "w-20" : "w-72"
-      }`}
+      className={[
+        "absolute inset-y-0 left-0 z-50 flex h-full flex-col transition-all duration-300 ease-in-out",
+        collapsed
+          ? "w-20 bg-slate-950 text-white shadow-xl"
+          : "w-72 bg-transparent text-slate-900",
+      ].join(" ")}
     >
-      {/* HEADER */}
+      {/* SIDEBAR HEADER */}
       <div
-        className={`flex h-20 items-center border-b border-slate-800 ${
+        className={[
+          "flex h-16 shrink-0 items-center",
           collapsed
-            ? "justify-center"
-            : "justify-between px-4"
-        }`}
+            ? "justify-center border-b border-slate-800"
+            : "justify-between px-5",
+        ].join(" ")}
       >
         {!collapsed && (
-          <div className="flex items-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-xl font-bold text-white">
-              C
-            </div>
+          <div className="min-w-0">
+            <p className="truncate text-lg font-bold text-slate-900">
+              Chamber
+            </p>
 
-            <div className="ml-3">
-              <h1 className="text-lg font-bold text-white">
-                Chamber
-              </h1>
-
-              <p className="text-xs text-slate-400">
-                Secure Collaboration
-              </p>
-            </div>
+            <p className="text-xs text-slate-500">
+              Where Organization Meets Focus
+            </p>
           </div>
         )}
 
         <button
           type="button"
           onClick={onToggle}
-          className="rounded-xl bg-slate-800 p-3 text-white transition hover:bg-slate-700"
-          title={
+          aria-label={
             collapsed
               ? "Open sidebar"
-              : "Collapse sidebar"
+              : "Close sidebar"
           }
+          className={[
+            "flex shrink-0 items-center justify-center rounded-xl transition",
+            collapsed
+              ? "h-10 w-10 text-slate-300 hover:bg-slate-800 hover:text-white"
+              : "h-10 w-10 text-slate-500 hover:bg-slate-100 hover:text-slate-900",
+          ].join(" ")}
         >
           {collapsed ? (
-            <Menu size={22} />
+            <Menu className="h-5 w-5" />
           ) : (
-            <X size={22} />
+            <X className="h-5 w-5" />
           )}
         </button>
       </div>
 
       {/* NAVIGATION */}
-      <nav className="flex-1 space-y-2 overflow-y-auto p-3">
-        {navigation.map((item) => {
-          const Icon = item.icon;
+      <nav
+        className={[
+          "flex-1 overflow-y-auto",
+          collapsed
+            ? "px-3 py-5"
+            : "px-4 py-6",
+        ].join(" ")}
+      >
+        <div className="space-y-2">
+          {navigation.map(
+            ({
+              id,
+              label,
+              icon: Icon,
+            }) => {
+              const active =
+                activeSection === id;
 
-          const isActive =
-            activeSection === item.id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() =>
+                    onSectionChange(id)
+                  }
+                  title={
+                    collapsed
+                      ? label
+                      : undefined
+                  }
+                  className={[
+                    "group flex w-full items-center transition-all duration-200",
+                    collapsed
+                      ? "h-12 justify-center rounded-xl"
+                      : "h-11 rounded-xl px-3",
+                    active
+                      ? collapsed
+                        ? "bg-blue-600 text-white shadow-sm"
+                        : "border-l-2 border-blue-600 text-blue-600"
+                      : collapsed
+                        ? "text-slate-300 hover:bg-slate-800 hover:text-white"
+                        : "text-slate-600 hover:text-blue-600",
+                  ].join(" ")}
+                >
+                  <Icon className="h-5 w-5 shrink-0" />
 
-          return (
+                  {!collapsed && (
+                    <span className="ml-3 truncate text-sm font-semibold">
+                      {label}
+                    </span>
+                  )}
+                </button>
+              );
+            }
+          )}
+        </div>
+
+        {/* WORKING CALL BUTTON */}
+        {callAvailable && (
+          <div
+            className={[
+              "mt-3",
+              collapsed
+                ? ""
+                : "border-t border-slate-200 pt-3",
+            ].join(" ")}
+          >
             <button
-              key={item.id}
               type="button"
-              onClick={() =>
-                onSectionChange(item.id)
-              }
+              onClick={handleCallClick}
+              disabled={callLoading}
               title={
                 collapsed
-                  ? item.label
+                  ? activeCall
+                    ? "Join active call"
+                    : "Start call"
                   : undefined
               }
-              className={`flex w-full items-center rounded-xl py-3 font-medium transition ${
+              className={[
+                "group flex w-full items-center transition-all duration-200",
                 collapsed
-                  ? "justify-center"
-                  : "gap-3 px-4"
-              } ${
-                isActive
-                  ? "bg-blue-600 text-white"
-                  : "text-slate-300 hover:bg-slate-800"
-              }`}
+                  ? "h-12 justify-center rounded-xl"
+                  : "h-11 rounded-xl px-3",
+                activeCall
+                  ? collapsed
+                    ? "bg-emerald-600 text-white shadow-sm hover:bg-emerald-700"
+                    : "border-l-2 border-emerald-600 text-emerald-600 hover:text-emerald-700"
+                  : collapsed
+                    ? "text-slate-300 hover:bg-slate-800 hover:text-white"
+                    : "text-slate-600 hover:text-blue-600",
+                callLoading
+                  ? "cursor-not-allowed opacity-60"
+                  : "",
+              ].join(" ")}
             >
-              <Icon size={20} />
+              {callLoading ? (
+                <Loader2 className="h-5 w-5 shrink-0 animate-spin" />
+              ) : (
+                <PhoneCall className="h-5 w-5 shrink-0" />
+              )}
 
               {!collapsed && (
-                <span>{item.label}</span>
+                <span className="ml-3 truncate text-sm font-semibold">
+                  {callLoading
+                    ? "Starting Call..."
+                    : activeCall
+                      ? "Join Call"
+                      : "Start Call"}
+                </span>
               )}
             </button>
-          );
-        })}
+          </div>
+        )}
+
+        {/* SETTINGS */}
+        <div
+          className={[
+            "mt-2",
+            collapsed
+              ? ""
+              : "border-t border-slate-200 pt-2",
+          ].join(" ")}
+        >
+          <button
+            type="button"
+            onClick={() =>
+              onSectionChange("settings")
+            }
+            title={
+              collapsed
+                ? "Settings"
+                : undefined
+            }
+            className={[
+              "group flex w-full items-center transition-all duration-200",
+              collapsed
+                ? "h-12 justify-center rounded-xl"
+                : "h-11 rounded-xl px-3",
+              activeSection === "settings"
+                ? collapsed
+                  ? "bg-blue-600 text-white shadow-sm"
+                  : "border-l-2 border-blue-600 text-blue-600"
+                : collapsed
+                  ? "text-slate-300 hover:bg-slate-800 hover:text-white"
+                  : "text-slate-600 hover:text-blue-600",
+            ].join(" ")}
+          >
+            <Settings className="h-5 w-5 shrink-0" />
+
+            {!collapsed && (
+              <span className="ml-3 truncate text-sm font-semibold">
+                Settings
+              </span>
+            )}
+          </button>
+        </div>
       </nav>
 
-      {/* CURRENT USER */}
-      <div className="border-t border-slate-800 p-4">
+      {/* USER FOOTER */}
+      <div
+        className={[
+          "shrink-0",
+          collapsed
+            ? "border-t border-slate-800 px-3 py-4"
+            : "px-4 pb-5",
+        ].join(" ")}
+      >
         <div
-          className={`flex items-center ${
-            collapsed ? "justify-center" : ""
-          }`}
+          className={[
+            "flex items-center",
+            collapsed
+              ? "justify-center"
+              : "gap-3",
+          ].join(" ")}
         >
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-green-600 font-bold text-white">
+          <div
+            title={
+              collapsed
+                ? displayName
+                : undefined
+            }
+            className={[
+              "flex shrink-0 items-center justify-center rounded-full font-bold",
+              collapsed
+                ? "h-10 w-10 bg-slate-800 text-white"
+                : "h-10 w-10 bg-blue-50 text-blue-600",
+            ].join(" ")}
+          >
             {initial}
           </div>
 
           {!collapsed && (
-            <div className="ml-3 min-w-0">
-              <p className="truncate font-semibold text-white">
-                {userName}
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-slate-900">
+                {displayName}
               </p>
 
-              <p className="text-sm text-green-400">
-                ● Online
-              </p>
+              <div className="mt-1 flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+
+                <span className="text-xs text-slate-500">
+                  Online
+                </span>
+              </div>
             </div>
           )}
         </div>

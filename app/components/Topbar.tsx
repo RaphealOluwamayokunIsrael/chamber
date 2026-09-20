@@ -1,63 +1,72 @@
 "use client";
 
 import {
-  Search,
-  Phone,
-  Video,
-  MoreVertical,
+  Menu,
+  PanelTopClose,
+  PanelTopOpen,
 } from "lucide-react";
+import { useState } from "react";
 
-export default function Topbar() {
+type TopbarProps = {
+  chamberName?: string;
+};
+
+export default function Topbar({
+  chamberName = "Chamber",
+}: TopbarProps) {
+  const [collapsed, setCollapsed] = useState(false);
+
   return (
-    <header className="h-20 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-8">
+    <header
+      className={`relative z-20 flex shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 transition-all duration-300 sm:px-6 ${
+        collapsed ? "h-12" : "h-16"
+      }`}
+    >
+      <div className="flex min-w-0 items-center gap-3">
+        <div
+          className={`flex shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 transition-all ${
+            collapsed ? "h-8 w-8" : "h-9 w-9"
+          }`}
+        >
+          <Menu
+            size={collapsed ? 17 : 19}
+          />
+        </div>
 
-      {/* Left */}
-
-      <div>
-        <h1 className="text-xl font-bold text-white">
-          Chamber
+        <h1
+          className={`truncate font-bold text-slate-900 transition-all ${
+            collapsed
+              ? "text-sm"
+              : "text-base sm:text-lg"
+          }`}
+        >
+          {chamberName}
         </h1>
-
-        <p className="text-sm text-slate-400">
-          Collaboration without distractions
-        </p>
       </div>
 
-      {/* Center */}
-
-      <div className="hidden lg:flex items-center bg-slate-800 rounded-xl px-4 py-2 w-[360px]">
-
-        <Search
-          className="text-slate-500"
-          size={18}
-        />
-
-        <input
-          type="text"
-          placeholder="Search messages..."
-          className="ml-3 bg-transparent outline-none text-white w-full placeholder:text-slate-500"
-        />
-
-      </div>
-
-      {/* Right */}
-
-      <div className="flex items-center gap-3">
-
-        <button className="h-11 w-11 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center justify-center">
-          <Phone size={20} className="text-white" />
-        </button>
-
-        <button className="h-11 w-11 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center justify-center">
-          <Video size={20} className="text-white" />
-        </button>
-
-        <button className="h-11 w-11 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center justify-center">
-          <MoreVertical size={20} className="text-white" />
-        </button>
-
-      </div>
-
+      <button
+        type="button"
+        onClick={() =>
+          setCollapsed((previous) => !previous)
+        }
+        aria-label={
+          collapsed
+            ? "Expand topbar"
+            : "Collapse topbar"
+        }
+        title={
+          collapsed
+            ? "Expand topbar"
+            : "Collapse topbar"
+        }
+        className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-blue-600"
+      >
+        {collapsed ? (
+          <PanelTopOpen size={18} />
+        ) : (
+          <PanelTopClose size={18} />
+        )}
+      </button>
     </header>
   );
 }

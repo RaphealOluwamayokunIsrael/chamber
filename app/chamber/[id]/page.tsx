@@ -61,7 +61,7 @@ export default function ChamberPage() {
     useState<ChamberSection>("chat");
 
   const [showSidebar, setShowSidebar] =
-    useState(true);
+    useState(false);
 
   const [chamber, setChamber] =
     useState<Chamber | null>(null);
@@ -676,9 +676,7 @@ export default function ChamberPage() {
         return;
       }
 
-      setSelectedFile(
-        null
-      );
+      setSelectedFile(null);
 
       await loadFiles();
     } catch (error) {
@@ -765,9 +763,15 @@ export default function ChamberPage() {
   function handleSectionChange(
     section: ChamberSection
   ) {
-    setActiveSection(
-      section
-    );
+    setActiveSection(section);
+
+    // On mobile, close the overlay after selecting a section.
+    if (
+      typeof window !== "undefined" &&
+      window.innerWidth < 768
+    ) {
+      setShowSidebar(false);
+    }
   }
 
   function handleSidebarToggle() {
@@ -779,15 +783,13 @@ export default function ChamberPage() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-950 px-6">
+      <main className="flex min-h-screen items-center justify-center bg-slate-100 px-6">
         <div className="text-center">
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" />
 
-          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-slate-700 border-t-blue-500" />
-
-          <p className="mt-4 text-slate-400">
+          <p className="mt-4 text-slate-500">
             Loading Chamber...
           </p>
-
         </div>
       </main>
     );
@@ -801,115 +803,20 @@ export default function ChamberPage() {
   }
 
   return (
-    <main className="flex h-screen overflow-hidden bg-slate-950 text-white">
+    <main className="relative flex h-screen min-h-0 overflow-hidden bg-slate-100 text-slate-900">
 
-      <Sidebar
-        activeSection={
-          activeSection
-        }
-        onSectionChange={
-          handleSectionChange
-        }
-        collapsed={
-          !showSidebar
-        }
-        onToggle={
-          handleSidebarToggle
-        }
-      />
-
+      {/* TOPBAR + MAIN WORKSPACE */}
       <div className="flex min-w-0 flex-1 flex-col">
 
-        <Topbar />
+        <Topbar
+          chamberName={
+            chamber.chamber_name
+          }
+        />
 
-        <div className="flex min-h-0 flex-1 flex-col">
+        <div className="min-h-0 flex-1 p-2 sm:p-3">
 
-          <div className="flex-shrink-0 border-b border-slate-800 bg-slate-900 px-5 py-4 sm:px-6">
-
-            <div className="flex flex-wrap items-center justify-between gap-4">
-
-              <div className="min-w-0">
-
-                <h1 className="truncate text-xl font-bold text-white sm:text-2xl">
-                  {chamber.chamber_name}
-                </h1>
-
-                {chamber.description && (
-                  <p className="mt-1 line-clamp-2 text-sm text-slate-400">
-                    {chamber.description}
-                  </p>
-                )}
-
-              </div>
-
-              <div className="flex shrink-0 items-center gap-2">
-
-                {activeCall ? (
-                  <button
-                    type="button"
-                    onClick={
-                      joinCall
-                    }
-                    className="rounded-xl bg-green-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-green-700"
-                  >
-                    📞 Join Call
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={
-                      startCall
-                    }
-                    disabled={
-                      callLoading
-                    }
-                    className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {callLoading
-                      ? "Starting..."
-                      : "📞 Start Call"}
-                  </button>
-                )}
-
-              </div>
-
-            </div>
-
-          </div>
-
-          {activeCall && (
-            <div className="flex-shrink-0 border-b border-green-900/50 bg-green-950/30 px-5 py-3 sm:px-6">
-
-              <div className="flex flex-wrap items-center justify-between gap-3">
-
-                <div>
-
-                  <p className="font-semibold text-green-300">
-                    📞 Chamber call is in progress
-                  </p>
-
-                  <p className="mt-1 text-xs text-green-400/80">
-                    A member is currently in a live Chamber call.
-                  </p>
-
-                </div>
-
-                <button
-                  type="button"
-                  onClick={
-                    joinCall
-                  }
-                  className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700"
-                >
-                  Join Call
-                </button>
-
-              </div>
-
-            </div>
-          )}
-
-          <div className="min-h-0 flex-1">
+          <div className="h-full min-h-0 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
 
             {activeSection ===
               "chat" && (
@@ -931,46 +838,38 @@ export default function ChamberPage() {
 
             {activeSection ===
               "members" && (
-              <div className="h-full overflow-y-auto bg-slate-950 p-6">
+              <div className="h-full overflow-y-auto bg-slate-50 p-4 sm:p-6">
 
                 <div className="mx-auto max-w-5xl">
 
                   <div className="mb-6">
-
-                    <h2 className="text-2xl font-bold text-white">
+                    <h2 className="text-2xl font-bold text-slate-900">
                       Chamber Members
                     </h2>
 
-                    <p className="mt-1 text-sm text-slate-400">
+                    <p className="mt-1 text-sm text-slate-500">
                       People who belong to this Chamber.
                     </p>
-
                   </div>
 
                   {membersLoading ? (
-                    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center">
-
-                      <p className="text-slate-400">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
+                      <p className="text-slate-500">
                         Loading members...
                       </p>
-
                     </div>
                   ) : membersError ? (
-                    <div className="rounded-2xl border border-red-900/50 bg-red-950/20 p-6">
-
-                      <p className="text-red-400">
+                    <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
+                      <p className="text-red-600">
                         {membersError}
                       </p>
-
                     </div>
                   ) : members.length ===
                     0 ? (
-                    <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900 p-8 text-center">
-
-                      <p className="text-slate-400">
+                    <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center">
+                      <p className="text-slate-500">
                         No members found.
                       </p>
-
                     </div>
                   ) : (
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -983,12 +882,12 @@ export default function ChamberPage() {
                             key={
                               member.id
                             }
-                            className="rounded-2xl border border-slate-800 bg-slate-900 p-5"
+                            className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
                           >
 
                             <div className="flex items-center gap-4">
 
-                              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-600/20 font-bold text-blue-400">
+                              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-50 font-bold text-blue-600">
                                 {member.full_name
                                   ?.charAt(
                                     0
@@ -999,7 +898,7 @@ export default function ChamberPage() {
 
                               <div className="min-w-0">
 
-                                <p className="truncate font-semibold text-white">
+                                <p className="truncate font-semibold text-slate-900">
                                   {member.full_name}
                                 </p>
 
@@ -1025,25 +924,23 @@ export default function ChamberPage() {
 
             {activeSection ===
               "files" && (
-              <div className="h-full overflow-y-auto bg-slate-950 p-6">
+              <div className="h-full overflow-y-auto bg-slate-50 p-4 sm:p-6">
 
                 <div className="mx-auto max-w-5xl">
 
                   <div className="mb-6">
-
-                    <h2 className="text-2xl font-bold text-white">
+                    <h2 className="text-2xl font-bold text-slate-900">
                       Chamber Files
                     </h2>
 
-                    <p className="mt-1 text-sm text-slate-400">
+                    <p className="mt-1 text-sm text-slate-500">
                       Upload and access files shared in this Chamber.
                     </p>
-
                   </div>
 
-                  <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
 
-                    <h3 className="text-lg font-semibold text-white">
+                    <h3 className="text-lg font-semibold text-slate-900">
                       Upload File
                     </h3>
 
@@ -1063,7 +960,7 @@ export default function ChamberPage() {
                               null
                           )
                         }
-                        className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-800 p-3 text-sm text-slate-300 file:mr-4 file:rounded-lg file:border-0 file:bg-blue-600 file:px-3 file:py-2 file:font-semibold file:text-white hover:file:bg-blue-700"
+                        className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-blue-600 file:px-3 file:py-2 file:font-semibold file:text-white hover:file:bg-blue-700"
                       />
 
                       <button
@@ -1085,7 +982,7 @@ export default function ChamberPage() {
                     </div>
 
                     {selectedFile && (
-                      <p className="mt-3 text-sm text-slate-400">
+                      <p className="mt-3 text-sm text-slate-500">
                         Selected:{" "}
                         {selectedFile.name}
                       </p>
@@ -1096,22 +993,20 @@ export default function ChamberPage() {
                   <div className="mt-6">
 
                     {filesLoading ? (
-                      <div className="rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center">
-
-                        <p className="text-slate-400">
+                      <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
+                        <p className="text-slate-500">
                           Loading files...
                         </p>
-
                       </div>
                     ) : files.length ===
                       0 ? (
-                      <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900 p-8 text-center">
+                      <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center">
 
                         <div className="text-5xl">
                           📁
                         </div>
 
-                        <p className="mt-4 font-semibold text-white">
+                        <p className="mt-4 font-semibold text-slate-900">
                           No files yet
                         </p>
 
@@ -1131,18 +1026,18 @@ export default function ChamberPage() {
                               key={
                                 file.id
                               }
-                              className="flex flex-col gap-4 rounded-2xl border border-slate-800 bg-slate-900 p-5 sm:flex-row sm:items-center sm:justify-between"
+                              className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between"
                             >
 
                               <div className="flex min-w-0 items-center gap-4">
 
-                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600/10 text-xl">
+                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-xl">
                                   📄
                                 </div>
 
                                 <div className="min-w-0">
 
-                                  <p className="truncate font-semibold text-white">
+                                  <p className="truncate font-semibold text-slate-900">
                                     {file.file_name}
                                   </p>
 
@@ -1168,7 +1063,7 @@ export default function ChamberPage() {
                                   }
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="rounded-lg bg-blue-600/10 px-4 py-2 text-sm font-semibold text-blue-400 transition hover:bg-blue-600/20"
+                                  className="rounded-lg bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-600 transition hover:bg-blue-100"
                                 >
                                   Open
                                 </a>
@@ -1182,7 +1077,7 @@ export default function ChamberPage() {
                                         file
                                       )
                                     }
-                                    className="rounded-lg bg-red-600/10 px-4 py-2 text-sm font-semibold text-red-400 transition hover:bg-red-600/20"
+                                    className="rounded-lg bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-100"
                                   >
                                     Delete
                                   </button>
@@ -1242,27 +1137,27 @@ export default function ChamberPage() {
 
             {activeSection ===
               "settings" && (
-              <div className="h-full overflow-y-auto bg-slate-950 p-6">
+              <div className="h-full overflow-y-auto bg-slate-50 p-4 sm:p-6">
 
                 <div className="mx-auto max-w-4xl">
 
-                  <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
 
-                    <h2 className="text-2xl font-bold text-white">
+                    <h2 className="text-2xl font-bold text-slate-900">
                       Chamber Settings
                     </h2>
 
-                    <p className="mt-2 text-slate-400">
+                    <p className="mt-2 text-slate-500">
                       Chamber settings and management options.
                     </p>
 
-                    <div className="mt-6 rounded-xl border border-slate-800 bg-slate-950 p-5">
+                    <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5">
 
-                      <p className="text-sm text-slate-400">
+                      <p className="text-sm text-slate-500">
                         Chamber:
                       </p>
 
-                      <p className="mt-1 font-semibold text-white">
+                      <p className="mt-1 font-semibold text-slate-900">
                         {chamber.chamber_name}
                       </p>
 
@@ -1280,6 +1175,34 @@ export default function ChamberPage() {
         </div>
 
       </div>
+
+      {/* OVERLAY SIDEBAR */}
+      <Sidebar
+        activeSection={
+          activeSection
+        }
+        onSectionChange={
+          handleSectionChange
+        }
+        collapsed={
+          !showSidebar
+        }
+        onToggle={
+          handleSidebarToggle
+        }
+        activeCall={
+          activeCall
+        }
+        callLoading={
+          callLoading
+        }
+        onStartCall={
+          startCall
+        }
+        onJoinCall={
+          joinCall
+        }
+      />
 
     </main>
   );
