@@ -13,6 +13,8 @@ import {
   ShieldCheck,
   UserCircle,
   Users,
+  Sparkles,
+  Command,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -44,9 +46,6 @@ export default function Dashboard() {
     setErrorMessage("");
 
     try {
-      /*
-       * GET CURRENT USER
-       */
       const {
         data: { user },
         error: userError,
@@ -59,12 +58,6 @@ export default function Dashboard() {
 
       setUserEmail(user.email || "");
 
-      /*
-       * GET USER'S CHAMBERS
-       *
-       * This secure database function returns
-       * Chambers where the current user is a member.
-       */
       const { data, error } =
         await supabase.rpc("get_my_chambers");
 
@@ -116,243 +109,387 @@ export default function Dashboard() {
   }
 
   function getInitial(name: string) {
-    return name.trim().charAt(0).toUpperCase() || "C";
+    return (
+      name.trim().charAt(0).toUpperCase() ||
+      "C"
+    );
   }
 
   return (
-    <main className="min-h-screen bg-gray-100 px-4 py-6 dark:bg-gray-950 sm:px-6 md:p-8">
-      <div className="mx-auto max-w-7xl">
+    <main className="min-h-screen overflow-hidden bg-[#f4f4f1] text-[#111111]">
 
-        {/* HEADER */}
-        <header className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+      {/* BACKGROUND GRAPHICS */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
 
-          <div className="min-w-0">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg">
-                <Building2 className="h-6 w-6" />
-              </div>
+        <div className="absolute left-[-180px] top-[-180px] h-[440px] w-[440px] rounded-full border border-black/[0.045]" />
 
-              <div>
-                <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white sm:text-4xl">
-                  Welcome to Chamber 👋
-                </h1>
+        <div className="absolute right-[-180px] top-[120px] h-[420px] w-[420px] rounded-full border border-black/[0.045]" />
 
-                <p className="mt-1 text-sm font-medium text-gray-600 dark:text-gray-400 sm:text-base">
-                  Your organizations, all in one place.
-                </p>
-              </div>
+        <div className="absolute left-0 top-[28%] h-px w-full bg-black/[0.03]" />
+
+        <div className="absolute left-[18%] top-0 h-full w-px bg-black/[0.025]" />
+
+        <div className="absolute right-[18%] top-0 h-full w-px bg-black/[0.025]" />
+
+        <div className="absolute left-[12%] top-[18%] h-2 w-2 rounded-full bg-[#00e676]" />
+
+        <div className="absolute right-[14%] top-[25%] h-1.5 w-1.5 rounded-full bg-black/20" />
+
+        <div className="absolute bottom-[20%] left-[9%] h-1.5 w-1.5 rounded-full bg-black/20" />
+
+      </div>
+
+      <div className="relative z-10 mx-auto max-w-7xl px-6 py-8 sm:px-8 lg:px-10">
+
+        {/* TOP NAV */}
+        <header className="flex items-center justify-between">
+
+          <div className="flex items-center gap-3">
+
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#080908] text-[#00e676] shadow-sm">
+              <span className="text-sm font-bold">
+                C
+              </span>
             </div>
 
-            {userEmail && (
-              <p className="mt-4 break-all text-sm text-gray-500 dark:text-gray-500">
-                {userEmail}
+            <div>
+              <p className="text-[15px] font-semibold tracking-[-0.03em]">
+                Chamber
               </p>
-            )}
+
+              <p className="hidden text-[9px] uppercase tracking-[0.15em] text-black/35 sm:block">
+                Organization meets focus
+              </p>
+            </div>
+
           </div>
 
-          {/* PROFILE */}
-          <button
-            type="button"
-            onClick={() => router.push("/profile")}
-            className="flex h-14 w-14 shrink-0 items-center justify-center self-start rounded-full bg-blue-600 text-xl font-bold text-white shadow-lg transition hover:bg-blue-700 sm:self-center"
-            title="Open Profile"
-          >
-            {userEmail
-              ? userEmail.charAt(0).toUpperCase()
-              : "U"}
-          </button>
+          <div className="flex items-center gap-2">
+
+            <button
+              type="button"
+              onClick={() =>
+                router.push("/notifications")
+              }
+              className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-black/[0.08] bg-white text-black/55 transition hover:bg-[#fafaf8]"
+              title="Notifications"
+            >
+              <Bell
+                size={16}
+                strokeWidth={1.7}
+              />
+
+              <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#00e676]" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                router.push("/profile")
+              }
+              className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#080908] text-xs font-semibold text-white transition hover:bg-black"
+              title="Open Profile"
+            >
+              {userEmail
+                ? userEmail
+                    .charAt(0)
+                    .toUpperCase()
+                : "U"}
+            </button>
+
+          </div>
+
         </header>
 
-        {/* ACTIONS */}
-        <section className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* HERO DASHBOARD HEADER */}
+        <section className="relative mt-14 overflow-hidden rounded-[28px] bg-[#080908] px-6 py-10 text-white shadow-[0_25px_70px_rgba(0,0,0,0.12)] sm:px-9 sm:py-12">
 
-          {/* CREATE */}
-          <button
-            type="button"
-            onClick={() => router.push("/create")}
-            className="group rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl dark:border-gray-800 dark:bg-gray-900 dark:hover:border-blue-900"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
-                <FolderPlus className="h-5 w-5" />
+          {/* GRAPHICS */}
+          <div className="pointer-events-none absolute inset-0 overflow-hidden">
+
+            <div className="absolute right-[-100px] top-[-140px] h-[360px] w-[360px] rounded-full border border-white/[0.06]" />
+
+            <div className="absolute right-[80px] top-[-70px] h-[210px] w-[210px] rounded-full border border-white/[0.04]" />
+
+            <div className="absolute bottom-[-100px] left-[35%] h-[250px] w-[250px] rounded-full bg-[#00e676]/[0.04] blur-3xl" />
+
+          </div>
+
+          <div className="relative z-10 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+
+            <div className="max-w-2xl">
+
+              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/[0.09] bg-white/[0.05] px-3 py-1.5">
+
+                <span className="h-1.5 w-1.5 rounded-full bg-[#00e676]" />
+
+                <span className="text-[9px] font-semibold uppercase tracking-[0.17em] text-white/50">
+                  Personal workspace
+                </span>
+
               </div>
 
-              <ArrowRight className="h-5 w-5 text-gray-400 transition-transform duration-300 group-hover:translate-x-1 group-hover:text-blue-600" />
+              <h1 className="text-[clamp(2.5rem,5vw,4.7rem)] font-semibold leading-[0.94] tracking-[-0.065em]">
+                Welcome back.
+                <br />
+                <span className="text-white/35">
+                  Everything in one place.
+                </span>
+              </h1>
+
+              <p className="mt-6 max-w-xl text-sm leading-6 text-white/50 sm:text-base">
+                Manage your organizations, enter your
+                Chambers and stay connected to the work
+                that matters.
+              </p>
+
             </div>
 
-            <h2 className="mt-5 text-xl font-extrabold text-gray-900 dark:text-white">
-              Create Chamber
-            </h2>
+            <div className="hidden shrink-0 lg:block">
 
-            <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-400">
-              Start a new organization workspace.
-            </p>
-          </button>
+              <div className="rounded-2xl border border-white/[0.08] bg-white/[0.04] p-4">
 
-          {/* JOIN */}
-          <button
-            type="button"
-            onClick={() => router.push("/join")}
-            className="group rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl dark:border-gray-800 dark:bg-gray-900 dark:hover:border-blue-900"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
-                <LogIn className="h-5 w-5" />
+                <div className="flex items-center gap-3">
+
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#00e676] text-black">
+                    <Sparkles size={17} />
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold">
+                      Your workspace
+                    </p>
+
+                    <p className="mt-1 text-[10px] text-white/35">
+                      {chambers.length}{" "}
+                      {chambers.length === 1
+                        ? "Chamber"
+                        : "Chambers"}{" "}
+                      available
+                    </p>
+                  </div>
+
+                </div>
+
               </div>
 
-              <ArrowRight className="h-5 w-5 text-gray-400 transition-transform duration-300 group-hover:translate-x-1 group-hover:text-blue-600" />
             </div>
 
-            <h2 className="mt-5 text-xl font-extrabold text-gray-900 dark:text-white">
-              Join Chamber
-            </h2>
+          </div>
 
-            <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-400">
-              Join an existing organization using its Chamber Code.
-            </p>
-          </button>
+        </section>
 
-          {/* NOTIFICATIONS */}
-          <button
-            type="button"
-            onClick={() =>
-              router.push("/notifications")
-            }
-            className="group rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl dark:border-gray-800 dark:bg-gray-900 dark:hover:border-blue-900"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
-                <Bell className="h-5 w-5" />
-              </div>
+        {/* QUICK COMMANDS */}
+        <section className="mt-8">
 
-              <ArrowRight className="h-5 w-5 text-gray-400 transition-transform duration-300 group-hover:translate-x-1 group-hover:text-blue-600" />
+          <div className="mb-4 flex items-center justify-between">
+
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.17em] text-black/35">
+                Quick actions
+              </p>
+
+              <h2 className="mt-1 text-lg font-semibold tracking-[-0.03em]">
+                Workspace commands
+              </h2>
             </div>
 
-            <h2 className="mt-5 text-xl font-extrabold text-gray-900 dark:text-white">
-              Notifications
-            </h2>
+            <Command
+              size={17}
+              className="text-black/25"
+            />
 
-            <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-400">
-              Stay updated with important organizational activity.
-            </p>
-          </button>
+          </div>
 
-          {/* PROFILE */}
-          <button
-            type="button"
-            onClick={() => router.push("/profile")}
-            className="group rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl dark:border-gray-800 dark:bg-gray-900 dark:hover:border-blue-900"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
-                <UserCircle className="h-5 w-5" />
-              </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
 
-              <ArrowRight className="h-5 w-5 text-gray-400 transition-transform duration-300 group-hover:translate-x-1 group-hover:text-blue-600" />
-            </div>
+            {/* CREATE */}
+            <DashboardAction
+              icon={
+                <FolderPlus size={18} />
+              }
+              title="Create Chamber"
+              description="Start a new organization workspace."
+              dark
+              onClick={() =>
+                router.push("/create")
+              }
+            />
 
-            <h2 className="mt-5 text-xl font-extrabold text-gray-900 dark:text-white">
-              Profile
-            </h2>
+            {/* JOIN */}
+            <DashboardAction
+              icon={
+                <LogIn size={18} />
+              }
+              title="Join Chamber"
+              description="Enter an existing workspace using a Chamber Code."
+              onClick={() =>
+                router.push("/join")
+              }
+            />
 
-            <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-400">
-              Manage your account and personal settings.
-            </p>
-          </button>
+            {/* NOTIFICATIONS */}
+            <DashboardAction
+              icon={
+                <Bell size={18} />
+              }
+              title="Notifications"
+              description="See important organizational activity."
+              onClick={() =>
+                router.push("/notifications")
+              }
+            />
+
+            {/* PROFILE */}
+            <DashboardAction
+              icon={
+                <UserCircle size={18} />
+              }
+              title="Profile"
+              description="Manage your account and personal settings."
+              onClick={() =>
+                router.push("/profile")
+              }
+            />
+
+          </div>
+
         </section>
 
         {/* MY CHAMBERS */}
-        <section className="mt-14">
+        <section className="mt-16">
 
           {/* SECTION HEADER */}
           <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
 
             <div>
-              <div className="flex items-center gap-3">
-                <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
 
-                <h2 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white">
-                  My Chambers
-                </h2>
+              <div className="flex items-center gap-3">
+
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#080908] text-[#00e676]">
+                  <Users size={16} />
+                </div>
+
+                <div>
+
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/35">
+                    Your organizations
+                  </p>
+
+                  <h2 className="mt-0.5 text-2xl font-semibold tracking-[-0.04em]">
+                    My Chambers
+                  </h2>
+
+                </div>
+
               </div>
 
-              <p className="mt-2 max-w-2xl text-gray-600 dark:text-gray-400">
+              <p className="mt-3 max-w-2xl text-sm text-black/45">
                 Chambers you created or joined.
               </p>
+
             </div>
 
             <button
               type="button"
               onClick={loadDashboard}
               disabled={loading}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-black/[0.08] bg-white px-4 py-2.5 text-xs font-semibold text-black/65 transition hover:bg-[#fafaf8] disabled:cursor-not-allowed disabled:opacity-50"
             >
+
               <RefreshCw
                 className={`h-4 w-4 ${
-                  loading ? "animate-spin" : ""
+                  loading
+                    ? "animate-spin"
+                    : ""
                 }`}
               />
 
-              {loading ? "Loading..." : "Refresh"}
+              {loading
+                ? "Loading..."
+                : "Refresh"}
+
             </button>
+
           </div>
 
           {/* ERROR */}
-          {!loading && errorMessage && (
-            <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-6 dark:border-red-900 dark:bg-red-950/40">
-              <div className="flex items-start gap-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-300">
-                  <ShieldCheck className="h-5 w-5" />
+          {!loading &&
+            errorMessage && (
+              <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-6">
+
+                <div className="flex items-start gap-4">
+
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-600">
+                    <ShieldCheck size={18} />
+                  </div>
+
+                  <div>
+
+                    <p className="font-bold text-red-800">
+                      Unable to load your Chambers
+                    </p>
+
+                    <p className="mt-2 text-sm text-red-700">
+                      {errorMessage}
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={loadDashboard}
+                      className="mt-4 rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-700"
+                    >
+                      Try Again
+                    </button>
+
+                  </div>
+
                 </div>
 
-                <div>
-                  <p className="font-bold text-red-800 dark:text-red-200">
-                    Unable to load your Chambers
-                  </p>
-
-                  <p className="mt-2 text-sm text-red-700 dark:text-red-300">
-                    {errorMessage}
-                  </p>
-
-                  <button
-                    type="button"
-                    onClick={loadDashboard}
-                    className="mt-4 rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-700"
-                  >
-                    Try Again
-                  </button>
-                </div>
               </div>
-            </div>
-          )}
+            )}
 
           {/* LOADING */}
           {loading && (
             <div className="mt-6 grid gap-6 md:grid-cols-2">
-              {[1, 2].map((item) => (
-                <div
-                  key={item}
-                  className="animate-pulse rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex gap-4">
-                      <div className="h-14 w-14 rounded-2xl bg-gray-200 dark:bg-gray-800" />
 
-                      <div>
-                        <div className="h-5 w-40 rounded bg-gray-200 dark:bg-gray-800" />
-                        <div className="mt-3 h-4 w-28 rounded bg-gray-200 dark:bg-gray-800" />
+              {[1, 2].map(
+                (item) => (
+                  <div
+                    key={item}
+                    className="animate-pulse rounded-3xl border border-black/[0.06] bg-white p-6"
+                  >
+
+                    <div className="flex items-start justify-between">
+
+                      <div className="flex gap-4">
+
+                        <div className="h-14 w-14 rounded-2xl bg-black/[0.06]" />
+
+                        <div>
+
+                          <div className="h-5 w-40 rounded bg-black/[0.06]" />
+
+                          <div className="mt-3 h-4 w-28 rounded bg-black/[0.04]" />
+
+                        </div>
+
                       </div>
+
+                      <div className="h-7 w-20 rounded-full bg-black/[0.05]" />
+
                     </div>
 
-                    <div className="h-7 w-20 rounded-full bg-gray-200 dark:bg-gray-800" />
+                    <div className="mt-6 h-4 w-full rounded bg-black/[0.05]" />
+
+                    <div className="mt-2 h-4 w-4/5 rounded bg-black/[0.04]" />
+
+                    <div className="mt-6 h-12 w-full rounded-xl bg-black/[0.05]" />
+
                   </div>
+                )
+              )}
 
-                  <div className="mt-6 h-4 w-full rounded bg-gray-200 dark:bg-gray-800" />
-                  <div className="mt-2 h-4 w-4/5 rounded bg-gray-200 dark:bg-gray-800" />
-
-                  <div className="mt-6 h-12 w-full rounded-xl bg-gray-200 dark:bg-gray-800" />
-                </div>
-              ))}
             </div>
           )}
 
@@ -360,30 +497,33 @@ export default function Dashboard() {
           {!loading &&
             !errorMessage &&
             chambers.length === 0 && (
-              <div className="mt-6 rounded-3xl border border-dashed border-gray-300 bg-white p-10 text-center shadow-sm dark:border-gray-700 dark:bg-gray-900 sm:p-14">
+              <div className="mt-6 overflow-hidden rounded-[28px] border border-black/[0.08] bg-white p-10 text-center shadow-sm sm:p-14">
 
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
-                  <Building2 className="h-8 w-8" />
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[#080908] text-[#00e676]">
+                  <Building2 size={27} />
                 </div>
 
-                <h3 className="mt-6 text-2xl font-extrabold text-gray-900 dark:text-white">
+                <h3 className="mt-6 text-2xl font-semibold tracking-[-0.04em]">
                   No Chambers yet
                 </h3>
 
-                <p className="mx-auto mt-3 max-w-md leading-7 text-gray-600 dark:text-gray-400">
-                  Create a new Chamber or join an existing organization to start collaborating.
+                <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-black/45">
+                  Create a new Chamber or join an
+                  existing organization to start
+                  collaborating.
                 </p>
 
                 <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
+
                   <button
                     type="button"
                     onClick={() =>
                       router.push("/create")
                     }
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-bold text-white transition hover:bg-blue-700"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#080908] px-6 py-3 text-sm font-semibold text-white transition hover:bg-black"
                   >
                     Create Chamber
-                    <ArrowRight className="h-4 w-4" />
+                    <ArrowRight size={15} />
                   </button>
 
                   <button
@@ -391,12 +531,14 @@ export default function Dashboard() {
                     onClick={() =>
                       router.push("/join")
                     }
-                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-6 py-3 font-bold text-gray-800 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-black/[0.1] bg-white px-6 py-3 text-sm font-semibold text-black transition hover:bg-[#fafaf8]"
                   >
                     Join Chamber
-                    <ArrowRight className="h-4 w-4" />
+                    <ArrowRight size={15} />
                   </button>
+
                 </div>
+
               </div>
             )}
 
@@ -406,88 +548,114 @@ export default function Dashboard() {
             chambers.length > 0 && (
               <div className="mt-6 grid gap-6 md:grid-cols-2">
 
-                {chambers.map((chamber) => (
-                  <article
-                    key={chamber.id}
-                    className="group overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-gray-800 dark:bg-gray-900"
-                  >
-                    <div className="p-6 sm:p-7">
+                {chambers.map(
+                  (chamber) => (
+                    <article
+                      key={chamber.id}
+                      className="group overflow-hidden rounded-[28px] border border-black/[0.07] bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"
+                    >
 
-                      {/* TOP */}
-                      <div className="flex items-start justify-between gap-4">
+                      <div className="p-6 sm:p-7">
 
-                        <div className="flex min-w-0 items-center gap-4">
+                        {/* TOP */}
+                        <div className="flex items-start justify-between gap-4">
 
-                          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-xl font-extrabold text-white shadow-lg shadow-blue-600/20">
-                            {getInitial(
-                              chamber.chamber_name
+                          <div className="flex min-w-0 items-center gap-4">
+
+                            <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#080908] text-xl font-bold text-[#00e676] shadow-lg">
+
+                              {getInitial(
+                                chamber.chamber_name
+                              )}
+
+                              <span className="absolute -bottom-1 -right-1 h-3 w-3 rounded-full border-2 border-white bg-[#00e676]" />
+
+                            </div>
+
+                            <div className="min-w-0">
+
+                              <h3 className="truncate text-xl font-semibold tracking-[-0.035em] text-[#111111] sm:text-2xl">
+                                {chamber.chamber_name}
+                              </h3>
+
+                              <p className="mt-1 truncate text-xs font-semibold uppercase tracking-[0.08em] text-black/35">
+                                {chamber.organization}
+                              </p>
+
+                            </div>
+
+                          </div>
+
+                          <span className="shrink-0 rounded-full border border-black/[0.07] bg-[#f4f4f1] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-black/55">
+                            {formatRole(
+                              chamber.role
                             )}
+                          </span>
+
+                        </div>
+
+                        {/* DESCRIPTION */}
+                        <p className="mt-6 line-clamp-2 text-sm leading-7 text-black/50">
+                          {chamber.description}
+                        </p>
+
+                        {/* DETAILS */}
+                        <div className="mt-6 grid gap-3 rounded-2xl bg-[#f4f4f1] p-4">
+
+                          <div className="flex items-start justify-between gap-4 text-xs">
+
+                            <span className="font-semibold uppercase tracking-[0.08em] text-black/30">
+                              Division
+                            </span>
+
+                            <span className="text-right font-semibold text-black/65">
+                              {chamber.division}
+                            </span>
+
                           </div>
 
-                          <div className="min-w-0">
-                            <h3 className="truncate text-xl font-extrabold text-gray-900 dark:text-white sm:text-2xl">
-                              {chamber.chamber_name}
-                            </h3>
+                          <div className="flex items-start justify-between gap-4 text-xs">
 
-                            <p className="mt-1 truncate font-semibold text-blue-600 dark:text-blue-400">
-                              {chamber.organization}
-                            </p>
+                            <span className="font-semibold uppercase tracking-[0.08em] text-black/30">
+                              Category
+                            </span>
+
+                            <span className="text-right font-semibold text-black/65">
+                              {chamber.category ||
+                                "—"}
+                            </span>
+
                           </div>
+
                         </div>
 
-                        <span className="shrink-0 rounded-full bg-blue-100 px-3 py-1.5 text-xs font-bold text-blue-700 dark:bg-blue-950 dark:text-blue-300">
-                          {formatRole(chamber.role)}
-                        </span>
-                      </div>
+                        {/* OPEN */}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            router.push(
+                              `/chamber/${chamber.id}`
+                            )
+                          }
+                          className="group/open mt-6 flex w-full items-center justify-between rounded-xl bg-[#080908] px-5 py-3.5 text-sm font-semibold text-white transition-all duration-300 hover:bg-black"
+                        >
 
-                      {/* DESCRIPTION */}
-                      <p className="mt-6 line-clamp-2 leading-7 text-gray-600 dark:text-gray-400">
-                        {chamber.description}
-                      </p>
-
-                      {/* DETAILS */}
-                      <div className="mt-6 grid gap-3 rounded-2xl bg-gray-50 p-4 dark:bg-gray-950">
-
-                        <div className="flex items-start justify-between gap-4 text-sm">
-                          <span className="font-semibold text-gray-500 dark:text-gray-500">
-                            Division
+                          <span>
+                            Open Chamber
                           </span>
 
-                          <span className="text-right font-semibold text-gray-800 dark:text-gray-200">
-                            {chamber.division}
-                          </span>
-                        </div>
+                          <ChevronRight
+                            size={17}
+                            className="transition-transform duration-300 group-hover/open:translate-x-1"
+                          />
 
-                        <div className="flex items-start justify-between gap-4 text-sm">
-                          <span className="font-semibold text-gray-500 dark:text-gray-500">
-                            Category
-                          </span>
-
-                          <span className="text-right font-semibold text-gray-800 dark:text-gray-200">
-                            {chamber.category || "—"}
-                          </span>
-                        </div>
+                        </button>
 
                       </div>
 
-                      {/* OPEN */}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          router.push(
-                            `/chamber/${chamber.id}`
-                          )
-                        }
-                        className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3.5 font-bold text-white transition-all duration-300 hover:bg-blue-700"
-                      >
-                        Open Chamber
-
-                        <ChevronRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
-                      </button>
-
-                    </div>
-                  </article>
-                ))}
+                    </article>
+                  )
+                )}
 
               </div>
             )}
@@ -495,21 +663,111 @@ export default function Dashboard() {
         </section>
 
         {/* FOOTER */}
-        <footer className="mt-16 border-t border-gray-300 py-8 text-center dark:border-gray-800">
-          <p className="text-sm text-gray-500">
-            Powered by
-          </p>
+        <footer className="mt-16 border-t border-black/[0.07] py-8">
 
-          <p className="mt-1 text-xl font-extrabold tracking-widest text-gray-900 dark:text-white">
-            RIO LAB
-          </p>
+          <div className="flex flex-col items-center justify-between gap-3 text-center sm:flex-row sm:text-left">
 
-          <p className="mt-1 text-xs text-gray-500">
-            Building purposeful software for organizations.
-          </p>
+            <div>
+
+              <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-black/30">
+                Powered by
+              </p>
+
+              <p className="mt-1 text-lg font-bold tracking-[-0.04em]">
+                RIO LAB
+              </p>
+
+            </div>
+
+            <p className="text-[11px] text-black/35">
+              Building purposeful software for organizations.
+            </p>
+
+          </div>
+
         </footer>
 
       </div>
+
     </main>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* DASHBOARD ACTION                                                           */
+/* -------------------------------------------------------------------------- */
+
+function DashboardAction({
+  icon,
+  title,
+  description,
+  onClick,
+  dark = false,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  onClick: () => void;
+  dark?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`group relative overflow-hidden rounded-2xl border p-5 text-left transition-all duration-300 hover:-translate-y-1 ${
+        dark
+          ? "border-[#080908] bg-[#080908] text-white shadow-lg shadow-black/10 hover:bg-black"
+          : "border-black/[0.08] bg-white text-[#111111] hover:shadow-xl"
+      }`}
+    >
+
+      <div className="flex items-start justify-between gap-4">
+
+        <div
+          className={`flex h-10 w-10 items-center justify-center rounded-xl ${
+            dark
+              ? "bg-[#00e676] text-black"
+              : "bg-[#f4f4f1] text-black/65"
+          }`}
+        >
+          {icon}
+        </div>
+
+        <ArrowRight
+          size={16}
+          className={`mt-1 transition-transform duration-300 group-hover:translate-x-1 ${
+            dark
+              ? "text-white/40"
+              : "text-black/25"
+          }`}
+        />
+
+      </div>
+
+      <h3
+        className={`mt-5 text-sm font-semibold tracking-[-0.02em] ${
+          dark
+            ? "text-white"
+            : "text-[#111111]"
+        }`}
+      >
+        {title}
+      </h3>
+
+      <p
+        className={`mt-2 text-xs leading-5 ${
+          dark
+            ? "text-white/40"
+            : "text-black/40"
+        }`}
+      >
+        {description}
+      </p>
+
+      {dark && (
+        <div className="absolute -bottom-8 -right-8 h-24 w-24 rounded-full bg-[#00e676]/[0.05] blur-xl" />
+      )}
+
+    </button>
   );
 }
