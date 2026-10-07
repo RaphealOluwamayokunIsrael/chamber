@@ -1,26 +1,371 @@
 @import "tailwindcss";
 
+/* =========================================================
+   CHAMBER — GLOBAL DESIGN SYSTEM
+   Where Organization Meets Focus
+   ========================================================= */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* -------------------------------------------------------
+     CORE COLORS
+     ------------------------------------------------------- */
+
+  --black: #050605;
+
+  --background-dark: #080908;
+  --surface-dark: #111211;
+  --surface-dark-secondary: #171817;
+
+  --background-light: #f3f2f0;
+  --background-white: #f8f8f6;
+  --surface-white: #ffffff;
+
+  --text-light-primary: #f5f5f2;
+  --text-light-secondary: #a5aaa5;
+
+  --text-dark-primary: #111111;
+  --text-dark-secondary: #5f625f;
+
+  /* -------------------------------------------------------
+     CHAMBER ACCENT
+     ------------------------------------------------------- */
+
+  --accent-green: #00e676;
+  --accent-green-hover: #00cf69;
+
+  --accent-mint: #e9f7ef;
+  --accent-lavender: #f0edf8;
+
+  /* -------------------------------------------------------
+     BORDERS
+     ------------------------------------------------------- */
+
+  --border-light: rgba(0, 0, 0, 0.08);
+  --border-dark: rgba(255, 255, 255, 0.1);
+
+  /* -------------------------------------------------------
+     STATUS
+     ------------------------------------------------------- */
+
+  --status-success: #00c853;
+  --status-warning: #f59e0b;
+  --status-error: #dc2626;
+  --status-info: #64748b;
+
+  /* -------------------------------------------------------
+     SPACING
+     ------------------------------------------------------- */
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 80px;
+  --space-10: 96px;
+  --space-11: 128px;
+  --space-12: 160px;
+  --space-13: 192px;
+
+  /* -------------------------------------------------------
+     LAYOUT
+     ------------------------------------------------------- */
+
+  --container-width: 1440px;
+  --container-gutter: 32px;
+
+  /* -------------------------------------------------------
+     RADIUS
+     ------------------------------------------------------- */
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-2xl: 28px;
+
+  /* -------------------------------------------------------
+     MOTION
+     ------------------------------------------------------- */
+
+  --ease-chamber: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* -------------------------------------------------------
+     APPLICATION
+     ------------------------------------------------------- */
+
+  --background: var(--background-light);
+  --foreground: var(--text-dark-primary);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
+  --color-chamber-black: var(--black);
+
+  --color-chamber-dark: var(--background-dark);
+  --color-chamber-surface-dark: var(--surface-dark);
+  --color-chamber-surface-dark-secondary: var(
+    --surface-dark-secondary
+  );
+
+  --color-chamber-light: var(--background-light);
+  --color-chamber-white: var(--background-white);
+  --color-chamber-surface-white: var(--surface-white);
+
+  --color-chamber-green: var(--accent-green);
+  --color-chamber-green-hover: var(--accent-green-hover);
+
+  --color-chamber-mint: var(--accent-mint);
+  --color-chamber-lavender: var(--accent-lavender);
+
+  --color-chamber-text-light: var(--text-light-primary);
+  --color-chamber-text-light-secondary: var(
+    --text-light-secondary
+  );
+
+  --color-chamber-text-dark: var(--text-dark-primary);
+  --color-chamber-text-dark-secondary: var(
+    --text-dark-secondary
+  );
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* =========================================================
+   BASE
+   ========================================================= */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
+  margin: 0;
+  min-height: 100vh;
+
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+
+  font-family:
+    var(--font-geist-sans),
+    Inter,
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* =========================================================
+   SELECTION
+   ========================================================= */
+
+::selection {
+  background: var(--accent-green);
+  color: #050605;
+}
+
+/* =========================================================
+   SCROLLBARS
+   ========================================================= */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(17, 18, 17, 0.25) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(17, 18, 17, 0.2);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(17, 18, 17, 0.35);
+}
+
+/* =========================================================
+   FOCUS
+   ========================================================= */
+
+:focus-visible {
+  outline: 2px solid var(--accent-green);
+  outline-offset: 3px;
+}
+
+/* =========================================================
+   LINKS
+   ========================================================= */
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* =========================================================
+   BUTTONS / INPUTS
+   ========================================================= */
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* =========================================================
+   CONTAINER
+   ========================================================= */
+
+.chamber-container {
+  width: min(
+    calc(100% - (var(--container-gutter) * 2)),
+    var(--container-width)
+  );
+
+  margin-inline: auto;
+}
+
+/* =========================================================
+   TECHNICAL GRID
+   ========================================================= */
+
+.chamber-grid {
+  background-image:
+    linear-gradient(
+      to right,
+      rgba(0, 0, 0, 0.045) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.045) 1px,
+      transparent 1px
+    );
+
+  background-size: 64px 64px;
+}
+
+/* =========================================================
+   DARK GRID
+   ========================================================= */
+
+.chamber-grid-dark {
+  background-image:
+    linear-gradient(
+      to right,
+      rgba(255, 255, 255, 0.045) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.045) 1px,
+      transparent 1px
+    );
+
+  background-size: 64px 64px;
+}
+
+/* =========================================================
+   TEXT UTILITIES
+   ========================================================= */
+
+.chamber-display {
+  font-size: clamp(4rem, 7vw, 7.5rem);
+  line-height: 0.92;
+  letter-spacing: -0.05em;
+  font-weight: 600;
+}
+
+.chamber-section-heading {
+  font-size: clamp(3rem, 5vw, 5.5rem);
+  line-height: 0.98;
+  letter-spacing: -0.04em;
+  font-weight: 600;
+}
+
+/* =========================================================
+   REVEAL ANIMATION
+   ========================================================= */
+
+@keyframes chamber-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.chamber-reveal {
+  animation:
+    chamber-reveal 0.8s var(--ease-chamber) both;
+}
+
+/* =========================================================
+   RESPONSIVE FOUNDATION
+   ========================================================= */
+
+@media (min-width: 640px) {
+  :root {
+    --container-gutter: 24px;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --container-gutter: 32px;
+  }
+}
+
+@media (min-width: 1280px) {
+  :root {
+    --container-gutter: 48px;
+  }
+}
+
+/* =========================================================
+   REDUCED MOTION
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
