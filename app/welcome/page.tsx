@@ -1,20 +1,23 @@
+
 "use client";
 
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-
+import type { ReactNode } from "react";
+import { supabase } from "@/lib/supabase";
 import {
-  Building2,
-  KeyRound,
-  Globe2,
-  UserCircle2,
-  LogOut,
   ArrowRight,
+  ArrowUpRight,
+  Building2,
+  ChevronRight,
   Clock3,
-  CalendarDays,
+  Compass,
+  LogOut,
   Plus,
+  ShieldCheck,
+  Users,
 } from "lucide-react";
 
 type Chamber = {
@@ -24,39 +27,40 @@ type Chamber = {
   created_at?: string;
 };
 
-/* =========================
-   REVEAL ANIMATION
-========================= */
+const ICON_PATH = "/chamber-icon.svg.png";
 
 function Reveal({
   children,
-  className = "",
   delay = 0,
+  className = "",
 }: {
-  children: React.ReactNode;
-  className?: string;
+  children: ReactNode;
   delay?: number;
+  className?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     const element = ref.current;
-
     if (!element) return;
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setVisible(true);
+      return;
+    }
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        setVisible(entry.isIntersecting);
+        if (entry.isIntersecting) {
+          setVisible(true);
+          observer.unobserve(entry.target);
+        }
       },
-      {
-        threshold: 0.15,
-        rootMargin: "0px 0px -5% 0px",
-      }
+      { threshold: 0.08 }
     );
 
     observer.observe(element);
-
     return () => observer.disconnect();
   }, []);
 
@@ -64,16 +68,172 @@ function Reveal({
     <div
       ref={ref}
       className={`transition-all duration-700 ease-out ${
-        visible
-          ? "translate-y-0 opacity-100"
-          : "translate-y-10 opacity-0"
+        visible ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0"
       } ${className}`}
-      style={{
-        transitionDelay: `${delay}ms`,
-      }}
+      style={{ transitionDelay: visible ? `${delay}ms` : "0ms" }}
     >
       {children}
     </div>
+  );
+}
+
+function BrandMark({ size = 44 }: { size?: number }) {
+  return (
+    <span
+      className="inline-flex shrink-0 items-center justify-center rounded-2xl border border-blue-100 bg-blue-50"
+      style={{ width: size, height: size }}
+    >
+      <Image
+        src={ICON_PATH}
+        alt="Chamber logo"
+        width={size - 10}
+        height={size - 10}
+        className="object-contain"
+        unoptimized
+      />
+    </span>
+  );
+}
+
+function ActionCard({
+  href,
+  onClick,
+  icon,
+  title,
+  description,
+  action,
+  featured = false,
+}: {
+  href?: string;
+  onClick?: () => void;
+  icon: ReactNode;
+  title: string;
+  description: string;
+  action: string;
+  featured?: boolean;
+}) {
+  const styles = `group flex h-full flex-col rounded-2xl border p-5 text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${
+    featured
+      ? "border-[#173c72] bg-gradient-to-br from-[#164b88] to-[#102b56] text-white"
+      : "border-[#e5eaf1] bg-white text-[#152844] hover:border-blue-200"
+  }`;
+
+  const content = (
+    <>
+      <div
+        className={`mb-5 flex h-12 w-12 items-center justify-center rounded-xl ${
+          featured ? "bg-white/15" : "bg-blue-50 text-blue-600"
+        }`}
+      >
+        {icon}
+      </div>
+
+      <h3 className="text-lg font-semibold">{title}</h3>
+
+      <p
+        className={`mt-2 flex-1 text-sm leading-relaxed ${
+          featured ? "text-blue-100" : "text-slate-500"
+        }`}
+      >
+        {description}
+      </p>
+
+      <div
+        className={`mt-6 flex items-center justify-between border-t pt-4 text-sm font-semibold ${
+          featured
+            ? "border-white/20 text-white"
+            : "border-slate-100 text-blue-600"
+        }`}
+      >
+        <span>{action}</span>
+        <ArrowRight
+          size={17}
+          className="transition-transform group-hover:translate-x-1"
+        />
+      </div>
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link href={href} className={styles}>
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <button type="button" onClick={onClick} className={styles}>
+      {content}
+    </button>
+  );
+}
+
+function ChamberCard({
+  chamber,
+  index,
+}: {
+  chamber: Chamber;
+  index: number;
+}) {
+  const initials = chamber.chamber_name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase() || "")
+    .join("");
+
+  const colors = [
+    "bg-blue-50 text-blue-600",
+    "bg-emerald-50 text-emerald-600",
+    "bg-amber-50 text-amber-600",
+    "bg-violet-50 text-violet-600",
+  ];
+
+  return (
+    <Reveal delay={index * 60} className="h-full">
+      <Link
+        href={`/chamber/${chamber.id}`}
+        className="group flex h-full flex-col rounded-2xl border border-[#e5eaf1] bg-white p-5 transition-all duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-lg"
+      >
+        <div className="flex items-start gap-3">
+          <div
+            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl font-bold ${
+              colors[index % colors.length]
+            }`}
+          >
+            {initials || <Building2 size={22} />}
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <h3 className="truncate font-serif text-lg font-semibold text-[#142743]">
+              {chamber.chamber_name}
+            </h3>
+
+            <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-slate-500">
+              {chamber.description ||
+                "A dedicated space to connect, organize and collaborate."}
+            </p>
+          </div>
+
+          <ArrowUpRight
+            size={18}
+            className="shrink-0 text-blue-600 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1"
+          />
+        </div>
+
+        <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4">
+          <span className="flex items-center gap-2 text-xs text-slate-500">
+            <span className="h-2 w-2 rounded-full bg-blue-500" />
+            Workspace
+          </span>
+
+          <span className="flex items-center gap-1 text-sm font-semibold text-blue-600">
+            Enter <ChevronRight size={15} />
+          </span>
+        </div>
+      </Link>
+    </Reveal>
   );
 }
 
@@ -81,36 +241,31 @@ export default function WelcomePage() {
   const router = useRouter();
 
   const [firstName, setFirstName] = useState("User");
-  const [greeting, setGreeting] = useState("Good Morning");
-
+  const [greeting, setGreeting] = useState("Welcome");
   const [currentTime, setCurrentTime] = useState("");
   const [currentDate, setCurrentDate] = useState("");
-
   const [chambers, setChambers] = useState<Chamber[]>([]);
   const [loadingChambers, setLoadingChambers] = useState(true);
-
-  /* =========================
-     LIVE DATE & TIME
-  ========================= */
+  const [loadError, setLoadError] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   useEffect(() => {
-    function updateDateTime() {
+    const updateDateTime = () => {
       const now = new Date();
       const hour = now.getHours();
 
-      if (hour < 12) {
-        setGreeting("Good Morning");
-      } else if (hour < 17) {
-        setGreeting("Good Afternoon");
-      } else {
-        setGreeting("Good Evening");
-      }
+      setGreeting(
+        hour < 12
+          ? "Good morning"
+          : hour < 17
+          ? "Good afternoon"
+          : "Good evening"
+      );
 
       setCurrentTime(
         now.toLocaleTimeString("en-NG", {
           hour: "2-digit",
           minute: "2-digit",
-          second: "2-digit",
           hour12: true,
         })
       );
@@ -123,638 +278,509 @@ export default function WelcomePage() {
           year: "numeric",
         })
       );
-    }
+    };
 
     updateDateTime();
 
-    const interval = setInterval(updateDateTime, 1000);
+    const interval = window.setInterval(updateDateTime, 1000);
 
-    return () => clearInterval(interval);
+    return () => window.clearInterval(interval);
   }, []);
 
-  /* =========================
-     LOAD USER + MY CHAMBERS
-  ========================= */
-
   useEffect(() => {
-    async function loadUserAndChambers() {
-      setLoadingChambers(true);
+    let cancelled = false;
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+    async function loadWorkspace() {
+      try {
+        const {
+          data: { user },
+          error: authError,
+        } = await supabase.auth.getUser();
 
-      if (!user) {
-        router.push("/login");
-        return;
+        if (cancelled) return;
+
+        if (authError || !user) {
+          router.replace("/login");
+          return;
+        }
+
+        const metadata = user.user_metadata || {};
+        const fullName =
+          metadata.full_name ||
+          metadata.fullName ||
+          user.email?.split("@")[0] ||
+          "User";
+
+        setFirstName(String(fullName).trim().split(/\s+/)[0]);
+
+        const { data: memberships, error: membershipError } =
+          await supabase
+            .from("members")
+            .select("chamber_id")
+            .eq("user_id", user.id);
+
+        if (membershipError) throw membershipError;
+        if (cancelled) return;
+
+        const chamberIds = [
+          ...new Set(
+            (memberships || [])
+              .map((member) => member.chamber_id)
+              .filter((id): id is string => Boolean(id))
+          ),
+        ];
+
+        if (chamberIds.length === 0) {
+          setChambers([]);
+          return;
+        }
+
+        const { data: chamberData, error: chamberError } =
+          await supabase
+            .from("chambers")
+            .select("id, chamber_name, description, created_at")
+            .in("id", chamberIds)
+            .order("created_at", { ascending: false });
+
+        if (chamberError) throw chamberError;
+
+        if (!cancelled) {
+          setChambers((chamberData || []) as Chamber[]);
+        }
+      } catch (error) {
+        console.error("Failed to load workspace:", error);
+
+        if (!cancelled) setLoadError(true);
+      } finally {
+        if (!cancelled) setLoadingChambers(false);
       }
-
-      const fullName =
-        user.user_metadata?.full_name ||
-        user.user_metadata?.fullName ||
-        "User";
-
-      setFirstName(fullName.split(" ")[0]);
-
-      /* =========================
-         GET USER'S CHAMBER MEMBERSHIPS
-      ========================= */
-
-      const { data: memberships, error: membershipError } =
-        await supabase
-          .from("members")
-          .select("chamber_id")
-          .eq("user_id", user.id);
-
-      if (membershipError) {
-        console.error(
-          "Error loading Chamber memberships:",
-          membershipError
-        );
-
-        setChambers([]);
-        setLoadingChambers(false);
-        return;
-      }
-
-      const chamberIds =
-        memberships?.map((membership) => membership.chamber_id) || [];
-
-      if (chamberIds.length === 0) {
-        setChambers([]);
-        setLoadingChambers(false);
-        return;
-      }
-
-      /* =========================
-         GET MY CHAMBERS
-      ========================= */
-
-      const { data: chamberData, error: chamberError } =
-        await supabase
-          .from("chambers")
-          .select("id, chamber_name, description, created_at")
-          .in("id", chamberIds)
-          .order("created_at", { ascending: false });
-
-      if (chamberError) {
-        console.error(
-          "Error loading Chambers:",
-          chamberError
-        );
-
-        setChambers([]);
-        setLoadingChambers(false);
-        return;
-      }
-
-      /* =========================
-         SHOW ALL MY CHAMBERS
-      ========================= */
-
-      setChambers(chamberData || []);
-
-      setLoadingChambers(false);
     }
 
-    loadUserAndChambers();
+    loadWorkspace();
+
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
-  /* =========================
-     SIGN OUT
-  ========================= */
-
   async function handleSignOut() {
-    await supabase.auth.signOut();
-    router.push("/login");
+    if (signingOut) return;
+
+    setSigningOut(true);
+
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      console.error("Sign out failed:", error);
+      setSigningOut(false);
+      return;
+    }
+
+    router.replace("/login");
+    router.refresh();
   }
 
-  /* =========================
-     SCROLL TO MY CHAMBERS
-  ========================= */
-
-  function scrollToMyChambers() {
+  function scrollToChambers() {
     document
       .getElementById("my-chambers")
-      ?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-100 dark:from-slate-950 dark:via-slate-900 dark:to-gray-950">
-
-      {/* ================= BACKGROUND GLOW ================= */}
-
-      <div className="absolute -top-40 -right-40 h-[420px] w-[420px] rounded-full bg-blue-500/20 blur-3xl" />
-
-      <div className="absolute bottom-0 -left-40 h-[420px] w-[420px] rounded-full bg-indigo-500/20 blur-3xl" />
-
-      {/* ================= HEADER ================= */}
-
-      <Reveal>
-        <header className="relative border-b border-white/20 bg-white/70 backdrop-blur-xl dark:border-gray-800 dark:bg-gray-900/70">
-
-          <div className="mx-auto flex max-w-7xl items-center justify-between px-8 py-6">
+    <main className="min-h-screen bg-[#f8f9fb] text-[#152844]">
+      {/* HEADER */}
+      <header className="sticky top-0 z-40 border-b border-[#e6eaf0] bg-white/95 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4 sm:px-8">
+          <Link href="/welcome" className="flex items-center gap-3">
+            <BrandMark />
 
             <div>
-              <h1 className="text-3xl font-extrabold tracking-wide text-gray-900 dark:text-white">
-                CHAMBER
-              </h1>
-
-              <p className="mt-1 text-gray-600 dark:text-gray-400">
-                Secure Collaboration Workspace
+              <p className="font-serif text-xl font-bold tracking-tight">
+                Chamber
+              </p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                Your Workspace
               </p>
             </div>
+          </Link>
 
-            <div className="flex items-center gap-5">
+          <div className="flex items-center gap-3 sm:gap-5">
+            <span className="hidden items-center gap-2 text-xs text-slate-500 sm:flex">
+              <ShieldCheck size={16} className="text-blue-600" />
+              Secure workspace
+            </span>
 
-              <div className="flex items-center gap-3">
-
-                <UserCircle2 className="h-11 w-11 text-blue-600" />
-
-                <div>
-                  <p className="font-semibold text-gray-900 dark:text-white">
-                    {firstName}
-                  </p>
-
-                  <p className="text-sm text-emerald-600">
-                    ● Online
-                  </p>
-                </div>
-
-              </div>
-
-              <button
-                onClick={handleSignOut}
-                className="flex items-center gap-2 rounded-xl bg-red-600 px-5 py-3 font-semibold text-white shadow-lg transition hover:bg-red-700"
-              >
-                <LogOut size={18} />
-                Sign Out
-              </button>
-
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#153e70] text-sm font-bold text-white">
+              {firstName[0]?.toUpperCase() || "U"}
             </div>
-
-          </div>
-
-        </header>
-      </Reveal>
-
-      {/* ================= MAIN ================= */}
-
-      <div className="relative mx-auto max-w-7xl px-8 py-14">
-
-        {/* ================= WELCOME + CLOCK ================= */}
-
-        <Reveal className="mb-12">
-
-          <div className="grid gap-8 lg:grid-cols-[1fr_360px] lg:items-center">
-
-            <div>
-
-              <h2 className="text-5xl font-extrabold text-gray-900 dark:text-white">
-                {greeting}, {firstName} 👋
-              </h2>
-
-              <p className="mt-4 max-w-2xl text-xl text-gray-600 dark:text-gray-400">
-                Manage your organizations, collaborate securely and build
-                amazing communities with Chamber.
-              </p>
-
-            </div>
-
-            {/* ================= DATE & TIME ================= */}
-
-            <div className="rounded-3xl border border-white/40 bg-white/80 p-7 shadow-xl backdrop-blur-xl dark:border-gray-700 dark:bg-gray-900/80">
-
-              <div className="flex items-center gap-3 text-blue-600">
-
-                <Clock3 className="h-6 w-6" />
-
-                <span className="font-semibold">
-                  Current Time
-                </span>
-
-              </div>
-
-              <p className="mt-3 text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white">
-                {currentTime}
-              </p>
-
-              <div className="mt-4 flex items-center gap-2 text-gray-600 dark:text-gray-400">
-
-                <CalendarDays className="h-5 w-5" />
-
-                <span className="text-sm">
-                  {currentDate}
-                </span>
-
-              </div>
-
-            </div>
-
-          </div>
-
-        </Reveal>
-
-        {/* ================= ACTION CARDS ================= */}
-
-        <Reveal className="mb-20">
-
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-
-            {/* ================= CREATE ================= */}
-
-            <Link href="/create">
-
-              <div className="group h-full cursor-pointer rounded-3xl border border-white/40 bg-white/80 p-8 shadow-xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-2 hover:border-blue-300 hover:shadow-2xl dark:border-gray-700 dark:bg-gray-900/80">
-
-                <Building2 className="mb-6 h-14 w-14 text-blue-600 transition group-hover:scale-110" />
-
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-                  Create Chamber
-                </h3>
-
-                <p className="mt-3 text-gray-600 dark:text-gray-400">
-                  Create a secure collaboration space for your organization.
-                </p>
-
-                <div className="mt-8 flex items-center font-semibold text-blue-600">
-                  Open
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </div>
-
-              </div>
-
-            </Link>
-
-            {/* ================= JOIN ================= */}
-
-            <Link href="/join">
-
-              <div className="group h-full cursor-pointer rounded-3xl border border-white/40 bg-white/80 p-8 shadow-xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-2 hover:border-emerald-300 hover:shadow-2xl dark:border-gray-700 dark:bg-gray-900/80">
-
-                <KeyRound className="mb-6 h-14 w-14 text-emerald-600 transition group-hover:scale-110" />
-
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-                  Join Chamber
-                </h3>
-
-                <p className="mt-3 text-gray-600 dark:text-gray-400">
-                  Join an existing organization using a Chamber Code.
-                </p>
-
-                <div className="mt-8 flex items-center font-semibold text-emerald-600">
-                  Open
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </div>
-
-              </div>
-
-            </Link>
-
-            {/* ================= BROWSE ================= */}
-
-            <Link href="/browse">
-
-              <div className="group h-full cursor-pointer rounded-3xl border border-white/40 bg-white/80 p-8 shadow-xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-2 hover:border-indigo-300 hover:shadow-2xl dark:border-gray-700 dark:bg-gray-900/80">
-
-                <Globe2 className="mb-6 h-14 w-14 text-indigo-600 transition group-hover:scale-110" />
-
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-                  Browse Chambers
-                </h3>
-
-                <p className="mt-3 text-gray-600 dark:text-gray-400">
-                  Discover public organizations available on Chamber.
-                </p>
-
-                <div className="mt-8 flex items-center font-semibold text-indigo-600">
-                  Open
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </div>
-
-              </div>
-
-            </Link>
-
-            {/* ================= MY CHAMBERS ================= */}
 
             <button
-              type="button"
-              onClick={scrollToMyChambers}
-              className="group h-full text-left"
+              onClick={handleSignOut}
+              disabled={signingOut}
+              className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50"
             >
-
-              <div className="h-full cursor-pointer rounded-3xl border border-white/40 bg-white/80 p-8 shadow-xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-2 hover:border-purple-300 hover:shadow-2xl dark:border-gray-700 dark:bg-gray-900/80">
-
-                <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-100 dark:bg-purple-900/30">
-
-                  <Building2 className="h-8 w-8 text-purple-600 dark:text-purple-400 transition group-hover:scale-110" />
-
-                </div>
-
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-                  My Chambers
-                </h3>
-
-                <p className="mt-3 text-gray-600 dark:text-gray-400">
-                  Open and manage the organizations you already belong to.
-                </p>
-
-                <div className="mt-8 flex items-center font-semibold text-purple-600">
-                  View Chambers
-                  <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
-                </div>
-
-              </div>
-
+              <LogOut size={15} />
+              <span className="hidden sm:inline">
+                {signingOut ? "Signing out..." : "Sign out"}
+              </span>
             </button>
-
           </div>
+        </div>
+      </header>
 
-        </Reveal>
-
-        {/* ================= MY CHAMBERS ================= */}
-
+      <div className="mx-auto max-w-7xl px-5 pb-12 pt-8 sm:px-8">
+        {/* WELCOME BANNER */}
         <Reveal>
+          <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#10243f] via-[#123a68] to-[#0b55a5] p-7 text-white shadow-xl sm:p-10">
+            <div className="pointer-events-none absolute -right-20 -top-28 h-80 w-80 rounded-full border border-white/10" />
+            <div className="pointer-events-none absolute -right-12 -top-16 h-64 w-64 rounded-full border border-white/10" />
+            <div className="pointer-events-none absolute bottom-[-90px] right-32 h-56 w-56 rounded-full border border-white/10" />
 
-          <section
-            id="my-chambers"
-            className="scroll-mt-8"
-          >
-
-            <div className="mb-6 flex items-center justify-between">
-
+            <div className="relative z-10 grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
               <div>
-
-                <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
-                  My Chambers
-                </h2>
-
-                <p className="mt-1 text-gray-600 dark:text-gray-400">
-                  Your organizations and collaboration spaces
+                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-blue-200">
+                  Welcome to your workspace
                 </p>
 
-              </div>
+                <h1 className="font-serif text-3xl font-semibold tracking-tight sm:text-5xl">
+                  {greeting}, {firstName}.
+                </h1>
 
-              <Link
-                href="/create"
-                className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:bg-blue-700"
-              >
-                <Plus size={18} />
-                Create Chamber
-              </Link>
-
-            </div>
-
-            {/* ================= LOADING ================= */}
-
-            {loadingChambers ? (
-
-              <div className="rounded-3xl border border-white/40 bg-white/80 p-10 text-center shadow-xl backdrop-blur-xl dark:border-gray-700 dark:bg-gray-900/80">
-
-                <p className="text-lg text-gray-500 dark:text-gray-400">
-                  Loading your Chambers...
+                <p className="mt-4 max-w-xl text-sm leading-7 text-blue-100 sm:text-base">
+                  Your space to organize ideas, build meaningful
+                  connections, and bring people together.
+                  Everything starts here.
                 </p>
 
-              </div>
-
-            ) : chambers.length === 0 ? (
-
-              /* ================= NO CHAMBERS ================= */
-
-              <div className="rounded-3xl border border-white/40 bg-white/80 p-10 text-center shadow-xl backdrop-blur-xl dark:border-gray-700 dark:bg-gray-900/80">
-
-                <Building2 className="mx-auto mb-5 h-14 w-14 text-blue-500" />
-
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-                  No Chambers Yet
-                </h3>
-
-                <p className="mx-auto mt-3 max-w-xl text-lg text-gray-600 dark:text-gray-400">
-                  Create your first Chamber or join an existing one to start
-                  collaborating.
-                </p>
-
-                <div className="mt-7 flex justify-center gap-4">
-
+                <div className="mt-7 flex flex-wrap gap-3">
                   <Link
                     href="/create"
-                    className="rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white transition hover:bg-blue-700"
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#087bfa] px-5 py-3 text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-blue-500"
                   >
+                    <Plus size={18} />
                     Create Chamber
-                  </Link>
-
-                  <Link
-                    href="/join"
-                    className="rounded-xl border border-gray-300 px-6 py-3 font-semibold text-gray-700 transition hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
-                  >
-                    Join Chamber
-                  </Link>
-
-                </div>
-
-              </div>
-
-            ) : (
-
-              /* ================= ALL MY CHAMBERS ================= */
-
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-
-                {chambers.map((chamber, index) => (
-
-                  <Reveal
-                    key={chamber.id}
-                    delay={index * 100}
-                  >
-
-                    <Link
-                      href={`/chamber/${chamber.id}`}
-                      className="group block h-full"
-                    >
-
-                      <div className="h-full rounded-3xl border border-white/40 bg-white/80 p-6 shadow-xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-2 hover:border-blue-300 hover:shadow-2xl dark:border-gray-700 dark:bg-gray-900/80">
-
-                        {/* Chamber Icon */}
-
-                        <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-100 dark:bg-blue-900/30">
-
-                          <Building2 className="h-7 w-7 text-blue-600 dark:text-blue-400" />
-
-                        </div>
-
-                        {/* Name */}
-
-                        <h3 className="line-clamp-2 text-xl font-bold text-gray-900 dark:text-white">
-                          {chamber.chamber_name}
-                        </h3>
-
-                        {/* Description */}
-
-                        <p className="mt-3 line-clamp-3 text-sm leading-6 text-gray-600 dark:text-gray-400">
-                          {chamber.description ||
-                            "A secure collaboration space on Chamber."}
-                        </p>
-
-                        {/* Open */}
-
-                        <div className="mt-6 flex items-center font-semibold text-blue-600">
-
-                          Open Chamber
-
-                          <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-
-                        </div>
-
-                      </div>
-
-                    </Link>
-
-                  </Reveal>
-
-                ))}
-
-              </div>
-
-            )}
-
-          </section>
-
-        </Reveal>
-
-        {/* ================= RECENT ACTIVITY ================= */}
-
-        <Reveal>
-
-          <section className="mt-16">
-
-            <h2 className="mb-6 text-3xl font-bold text-gray-900 dark:text-white">
-              Recent Activity
-            </h2>
-
-            <div className="rounded-3xl border border-white/40 bg-white/80 p-10 shadow-xl backdrop-blur-xl dark:border-gray-700 dark:bg-gray-900/80">
-
-              <p className="text-lg text-gray-500 dark:text-gray-400">
-                Activity from your Chambers will appear here.
-              </p>
-
-            </div>
-
-          </section>
-
-        </Reveal>
-
-      </div>
-
-      {/* ================= FOOTER ================= */}
-
-      <Reveal>
-
-        <footer className="relative mt-20 border-t border-white/20 bg-white/70 backdrop-blur-xl dark:border-gray-800 dark:bg-gray-900/70">
-
-          <div className="mx-auto max-w-7xl px-8 py-12">
-
-            <div className="grid gap-10 md:grid-cols-3">
-
-              {/* ================= RIO LAB ================= */}
-
-              <div>
-
-                <h2 className="text-3xl font-extrabold tracking-widest text-gray-900 dark:text-white">
-                  RIO LAB
-                </h2>
-
-                <p className="mt-4 leading-7 text-gray-600 dark:text-gray-400">
-                  Building purposeful software that helps organizations
-                  communicate, collaborate and improve productivity.
-                </p>
-
-              </div>
-
-              {/* ================= QUICK LINKS ================= */}
-
-              <div>
-
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                  Quick Links
-                </h3>
-
-                <div className="mt-5 space-y-3">
-
-                  <Link
-                    href="/create"
-                    className="block text-gray-600 transition hover:text-blue-600 dark:text-gray-400"
-                  >
-                    Create Chamber
-                  </Link>
-
-                  <Link
-                    href="/join"
-                    className="block text-gray-600 transition hover:text-blue-600 dark:text-gray-400"
-                  >
-                    Join Chamber
-                  </Link>
-
-                  <Link
-                    href="/browse"
-                    className="block text-gray-600 transition hover:text-blue-600 dark:text-gray-400"
-                  >
-                    Browse Chambers
                   </Link>
 
                   <button
-                    type="button"
-                    onClick={scrollToMyChambers}
-                    className="block text-left text-gray-600 transition hover:text-blue-600 dark:text-gray-400"
+                    onClick={scrollToChambers}
+                    className="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/20"
                   >
                     My Chambers
+                    <ArrowRight size={17} />
                   </button>
-
                 </div>
-
               </div>
 
-              {/* ================= DEVELOPERS ================= */}
+              <div className="relative flex min-w-[220px] flex-col items-center rounded-2xl border border-white/20 bg-white/10 p-6 text-center backdrop-blur-sm">
+                <Clock3 size={23} className="mb-3 text-blue-200" />
 
-              <div>
-
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                  Developers
-                </h3>
-
-                <p className="mt-4 text-gray-600 dark:text-gray-400">
-                  Learn more about RIO LAB, our mission, vision and future
-                  software products.
+                <p className="text-xs uppercase tracking-widest text-blue-100">
+                  Local Time
                 </p>
 
-                <Link
-                  href="/about-rio-lab"
-                  className="mt-5 inline-flex items-center font-semibold text-blue-600 hover:underline"
-                >
-                  Learn about the developers →
-                </Link>
+                <p className="mt-2 text-3xl font-semibold tabular-nums">
+                  {currentTime || "--:--"}
+                </p>
 
+                <p className="mt-2 text-xs text-blue-100">
+                  {currentDate || "Loading date..."}
+                </p>
+              </div>
+            </div>
+          </section>
+        </Reveal>
+
+        {/* WORKSPACE SUMMARY */}
+        <section className="mt-7 grid gap-4 sm:grid-cols-3">
+          <Reveal delay={60}>
+            <div className="rounded-2xl border border-[#e5eaf1] bg-white p-5">
+              <p className="text-xs font-medium text-slate-500">
+                Total Chambers
+              </p>
+              <p className="mt-2 text-3xl font-bold text-[#153e70]">
+                {loadingChambers ? "—" : chambers.length}
+              </p>
+              <p className="mt-2 text-xs text-slate-400">
+                Your active workspaces
+              </p>
+            </div>
+          </Reveal>
+
+          <Reveal delay={120}>
+            <div className="rounded-2xl border border-[#e5eaf1] bg-white p-5">
+              <p className="text-xs font-medium text-slate-500">
+                Connection
+              </p>
+              <div className="mt-3 flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                <span className="text-lg font-semibold text-[#153e70]">
+                  Connected
+                </span>
+              </div>
+              <p className="mt-2 text-xs text-slate-400">
+                Your Chamber workspace
+              </p>
+            </div>
+          </Reveal>
+
+          <Reveal delay={180}>
+            <Link
+              href="/browse"
+              className="group block rounded-2xl border border-[#e5eaf1] bg-white p-5 transition-all hover:border-blue-200 hover:shadow-md"
+            >
+              <p className="text-xs font-medium text-slate-500">
+                Discover
+              </p>
+              <div className="mt-3 flex items-center justify-between">
+                <span className="text-lg font-semibold text-[#153e70]">
+                  Explore Chambers
+                </span>
+                <ArrowUpRight
+                  size={19}
+                  className="text-blue-600 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1"
+                />
+              </div>
+              <p className="mt-2 text-xs text-slate-400">
+                Find communities and opportunities
+              </p>
+            </Link>
+          </Reveal>
+        </section>
+
+        {/* QUICK ACTIONS */}
+        <Reveal>
+          <div className="mb-5 mt-12">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600">
+              Get started
+            </p>
+            <h2 className="mt-2 font-serif text-2xl font-semibold text-[#142743] sm:text-3xl">
+              What would you like to do?
+            </h2>
+            <p className="mt-2 text-sm text-slate-500">
+              Everything you need to make your next move.
+            </p>
+          </div>
+        </Reveal>
+
+        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Reveal delay={60} className="h-full">
+            <ActionCard
+              href="/create"
+              icon={<Plus size={23} />}
+              title="Create a Chamber"
+              description="Start a new workspace and bring your people together."
+              action="Create now"
+              featured
+            />
+          </Reveal>
+
+          <Reveal delay={120} className="h-full">
+            <ActionCard
+              href="/join"
+              icon={<Users size={23} />}
+              title="Join a Chamber"
+              description="Connect with an existing team or community."
+              action="Join now"
+            />
+          </Reveal>
+
+          <Reveal delay={180} className="h-full">
+            <ActionCard
+              href="/browse"
+              icon={<Compass size={23} />}
+              title="Discover"
+              description="Explore new Chambers and find where you belong."
+              action="Explore"
+            />
+          </Reveal>
+
+          <Reveal delay={240} className="h-full">
+            <ActionCard
+              onClick={scrollToChambers}
+              icon={<Building2 size={23} />}
+              title="My Chambers"
+              description="Return to the spaces you are already part of."
+              action="View workspaces"
+            />
+          </Reveal>
+        </section>
+
+        {/* MY CHAMBERS */}
+        <section id="my-chambers" className="scroll-mt-28 pt-14">
+          <Reveal>
+            <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600">
+                  Your spaces
+                </p>
+                <h2 className="mt-2 font-serif text-2xl font-semibold text-[#142743] sm:text-3xl">
+                  My Chambers
+                </h2>
+                <p className="mt-2 text-sm text-slate-500">
+                  Pick up where you left off.
+                </p>
               </div>
 
+              <Link
+                href="/browse"
+                className="inline-flex items-center gap-2 text-sm font-semibold text-blue-600 hover:underline"
+              >
+                Browse Chambers <ArrowRight size={16} />
+              </Link>
+            </div>
+          </Reveal>
+
+          {loadingChambers ? (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {[1, 2, 3].map((item) => (
+                <div
+                  key={item}
+                  className="h-40 animate-pulse rounded-2xl border border-slate-200 bg-white p-5"
+                >
+                  <div className="h-11 w-11 rounded-xl bg-slate-100" />
+                  <div className="mt-4 h-4 w-2/3 rounded bg-slate-100" />
+                  <div className="mt-3 h-3 w-full rounded bg-slate-100" />
+                </div>
+              ))}
+            </div>
+          ) : loadError ? (
+            <div className="rounded-2xl border border-red-100 bg-white p-10 text-center">
+              <h3 className="font-semibold text-[#142743]">
+                Unable to load your Chambers
+              </h3>
+              <p className="mt-2 text-sm text-slate-500">
+                Please refresh the page and try again.
+              </p>
+            </div>
+          ) : chambers.length === 0 ? (
+            <Reveal>
+              <div className="rounded-2xl border border-dashed border-blue-200 bg-white px-6 py-14 text-center">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                  <Building2 size={30} />
+                </div>
+
+                <h3 className="mt-5 font-serif text-xl font-semibold text-[#142743]">
+                  Your journey starts here
+                </h3>
+
+                <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-slate-500">
+                  You are not part of any Chamber yet. Create your
+                  first workspace or join an existing one.
+                </p>
+
+                <div className="mt-6 flex flex-wrap justify-center gap-3">
+                  <Link
+                    href="/create"
+                    className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
+                  >
+                    Create Chamber
+                  </Link>
+
+                  <Link
+                    href="/join"
+                    className="rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold text-[#153e70] transition-colors hover:bg-slate-50"
+                  >
+                    Join Chamber
+                  </Link>
+                </div>
+              </div>
+            </Reveal>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {chambers.map((chamber, index) => (
+                <ChamberCard
+                  key={chamber.id}
+                  chamber={chamber}
+                  index={index}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* ACTIVITY */}
+        <Reveal>
+          <section className="mt-14">
+            <div className="mb-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600">
+                Stay informed
+              </p>
+              <h2 className="mt-2 font-serif text-2xl font-semibold text-[#142743]">
+                Recent Activity
+              </h2>
             </div>
 
-            <div className="mt-12 border-t border-gray-200 pt-8 dark:border-gray-700">
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-[#e5eaf1] bg-white px-6 py-12 text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                <Clock3 size={25} />
+              </div>
 
-              <p className="text-center text-sm text-gray-500">
-                Version 0.1 Alpha • © 2026 RIO LAB. All rights reserved.
+              <h3 className="mt-4 font-semibold text-[#142743]">
+                Your activity, all in one place
+              </h3>
+
+              <p className="mt-2 max-w-md text-sm leading-relaxed text-slate-500">
+                Updates from your Chambers will appear here when
+                the activity feature becomes available.
               </p>
 
+              <span className="mt-4 rounded-full bg-blue-50 px-4 py-1.5 text-xs font-semibold text-blue-600">
+                Coming soon
+              </span>
+            </div>
+          </section>
+        </Reveal>
+
+        {/* CLOSING SECTION */}
+        <Reveal>
+          <section className="mt-12 flex flex-col items-start justify-between gap-5 rounded-2xl border border-blue-100 bg-[#eef5ff] p-7 sm:flex-row sm:items-center">
+            <div>
+              <h2 className="font-serif text-xl font-semibold text-[#153e70]">
+                Great things begin with connection.
+              </h2>
+
+              <p className="mt-2 text-sm text-slate-600">
+                Bring your community together in one organized space.
+              </p>
             </div>
 
+            <Link
+              href="/create"
+              className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-[#087bfa] px-5 py-3 text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-blue-700"
+            >
+              Get Started <ArrowRight size={17} />
+            </Link>
+          </section>
+        </Reveal>
+      </div>
+
+      {/* FOOTER */}
+      <footer className="border-t border-[#e5eaf1] bg-white">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-5 py-6 text-center sm:flex-row sm:px-8 sm:text-left">
+          <div className="flex items-center gap-3">
+            <BrandMark size={34} />
+
+            <div>
+              <p className="text-sm font-bold text-[#153e70]">
+                Chamber
+              </p>
+              <p className="text-xs text-slate-400">
+                Where Organization Meets Focus.
+              </p>
+            </div>
           </div>
 
-        </footer>
-
-      </Reveal>
-
+          <div className="text-xs text-slate-500">
+            Built by{" "}
+            <Link
+              href="/about-rio-lab"
+              className="font-semibold text-blue-600 hover:underline"
+            >
+              RIO LAB
+            </Link>
+          </div>
+        </div>
+      </footer>
     </main>
   );
 }
