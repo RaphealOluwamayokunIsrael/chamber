@@ -435,7 +435,9 @@ export default function WelcomePage() {
               />
             </div>
 
-            <div className={`flex flex-wrap items-center justify-between gap-4 rounded-3xl ${DARK_GRADIENT} p-6 text-white shadow-xl shadow-[#142B4A]/20 ring-1 ring-[#42658D]/40`}>
+            <div
+              className={`flex flex-wrap items-center justify-between gap-4 rounded-3xl ${DARK_GRADIENT} p-6 text-white shadow-xl shadow-[#142B4A]/20 ring-1 ring-[#42658D]/40`}
+            >
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-white ring-1 ring-white/20">
                   <Clock3 size={22} />
@@ -648,10 +650,15 @@ export default function WelcomePage() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-neutral-100 via-white to-neutral-100 text-neutral-950">
+    <main className="min-h-screen w-full overflow-x-hidden bg-gradient-to-b from-neutral-100 via-white to-neutral-100 text-neutral-950">
       <header className="sticky top-0 z-50 border-b border-[#24466B]/50 bg-gradient-to-r from-black via-neutral-900 to-black text-white shadow-lg shadow-black/30">
-        <div className="mx-auto flex min-h-[72px] max-w-[1500px] items-center justify-between gap-4 px-4 sm:px-7">
-          <Link href="/welcome" className="flex shrink-0 items-center gap-3">
+        <div className="mx-auto grid w-full max-w-[1500px] grid-cols-[1fr_auto] items-center gap-x-3 gap-y-3 px-4 py-3 sm:flex sm:min-h-[72px] sm:justify-between sm:gap-4 sm:px-7 sm:py-0">
+
+          {/* BRAND */}
+          <Link
+            href="/welcome"
+            className="col-start-1 row-start-1 flex shrink-0 items-center gap-3"
+          >
             <BrandMark />
             <span
               style={SERIF}
@@ -661,9 +668,10 @@ export default function WelcomePage() {
             </span>
           </Link>
 
-          <div className="flex min-w-0 flex-1 justify-center">
+          {/* NAVIGATION */}
+          <div className="col-span-2 row-start-2 min-w-0 w-full sm:order-none sm:flex sm:min-w-0 sm:flex-1 sm:justify-center">
             <LayoutGroup id="chamber-navigation">
-              <nav className="flex max-w-full items-center gap-1 overflow-x-auto rounded-2xl bg-white/5 p-1 ring-1 ring-white/10 scrollbar-none">
+              <nav className="grid w-full grid-cols-3 items-center gap-1 rounded-2xl bg-white/5 p-1 ring-1 ring-white/10 sm:flex sm:w-auto sm:max-w-full sm:overflow-x-auto sm:scrollbar-none">
                 {sections.map((section) => {
                   const active = activeSection === section.name;
 
@@ -673,7 +681,7 @@ export default function WelcomePage() {
                       type="button"
                       onClick={() => setActiveSection(section.name)}
                       aria-current={active ? "page" : undefined}
-                      className={`relative flex shrink-0 items-center gap-2 rounded-xl px-3 py-2.5 text-[11px] font-bold tracking-wider outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[#6B8DB5] sm:px-4 sm:text-xs ${
+                      className={`relative flex min-w-0 items-center justify-center gap-1.5 rounded-xl px-1 py-3 text-[9px] font-bold tracking-[0.04em] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[#6B8DB5] sm:shrink-0 sm:gap-2 sm:px-4 sm:py-2.5 sm:text-xs sm:tracking-wider ${
                         active
                           ? "text-white"
                           : "text-neutral-200 hover:text-white"
@@ -691,7 +699,10 @@ export default function WelcomePage() {
                         />
                       )}
 
-                      <span className="relative z-10">{section.icon}</span>
+                      <span className="relative z-10 shrink-0">
+                        {section.icon}
+                      </span>
+
                       <span className="relative z-10 whitespace-nowrap">
                         {section.name}
                       </span>
@@ -702,7 +713,8 @@ export default function WelcomePage() {
             </LayoutGroup>
           </div>
 
-          <div className="flex shrink-0 items-center gap-3">
+          {/* SIGN OUT */}
+          <div className="col-start-2 row-start-1 flex shrink-0 items-center justify-end gap-3">
             <div
               title={firstName}
               className="hidden h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#42658D] to-[#142B4A] text-sm font-bold text-white ring-2 ring-white/40 sm:flex"
@@ -720,10 +732,11 @@ export default function WelcomePage() {
               <LogOut size={17} />
             </button>
           </div>
+
         </div>
       </header>
 
-      <div className="mx-auto min-h-[calc(100vh-72px)] max-w-[1500px] px-5 py-10 sm:px-8 sm:py-14">
+      <div className="mx-auto min-h-[calc(100vh-72px)] w-full max-w-[1500px] px-4 py-8 sm:px-8 sm:py-14">
         <AnimatePresence mode="wait" initial={false}>
           <motion.section
             key={activeSection}
