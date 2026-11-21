@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -650,14 +649,13 @@ export default function WelcomePage() {
   }
 
   return (
-    <main className="min-h-screen w-full overflow-x-hidden bg-gradient-to-b from-neutral-100 via-white to-neutral-100 text-neutral-950">
-      <header className="sticky top-0 z-50 border-b border-[#24466B]/50 bg-gradient-to-r from-black via-neutral-900 to-black text-white shadow-lg shadow-black/30">
-        <div className="mx-auto grid w-full max-w-[1500px] grid-cols-[1fr_auto] items-center gap-x-3 gap-y-3 px-4 py-3 sm:flex sm:min-h-[72px] sm:justify-between sm:gap-4 sm:px-7 sm:py-0">
-
+    <main className="min-h-screen w-full overflow-x-hidden bg-white text-neutral-950">
+      <header className="sticky top-0 z-50 border-b border-[#24466B]/50 bg-black text-white shadow-lg shadow-black/30">
+        <div className="mx-auto grid w-full max-w-[1500px] grid-cols-[1fr_auto] items-center gap-x-3 gap-y-3 px-3 py-3 sm:flex sm:min-h-[72px] sm:justify-between sm:gap-4 sm:px-7 sm:py-0">
           {/* BRAND */}
           <Link
             href="/welcome"
-            className="col-start-1 row-start-1 flex shrink-0 items-center gap-3"
+            className="col-start-1 row-start-1 flex shrink-0 items-center gap-3 pl-1 sm:pl-0"
           >
             <BrandMark />
             <span
@@ -668,10 +666,15 @@ export default function WelcomePage() {
             </span>
           </Link>
 
-          {/* NAVIGATION */}
-          <div className="col-span-2 row-start-2 min-w-0 w-full sm:order-none sm:flex sm:min-w-0 sm:flex-1 sm:justify-center">
+          {/* NAVIGATION
+              Mobile  : 3 x 2 grid of individual bordered tiles (icon above label)
+              Desktop : single horizontal pill track (unchanged look)           */}
+          <div className="col-span-2 row-start-2 w-full min-w-0 sm:flex sm:flex-1 sm:justify-center">
             <LayoutGroup id="chamber-navigation">
-              <nav className="grid w-full grid-cols-3 items-center gap-1 rounded-2xl bg-white/5 p-1 ring-1 ring-white/10 sm:flex sm:w-auto sm:max-w-full sm:overflow-x-auto sm:scrollbar-none">
+              <nav
+                aria-label="Chamber sections"
+                className="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto sm:max-w-full sm:items-center sm:gap-1 sm:overflow-x-auto sm:rounded-2xl sm:bg-white/5 sm:p-1 sm:ring-1 sm:ring-white/10 sm:scrollbar-none"
+              >
                 {sections.map((section) => {
                   const active = activeSection === section.name;
 
@@ -681,16 +684,16 @@ export default function WelcomePage() {
                       type="button"
                       onClick={() => setActiveSection(section.name)}
                       aria-current={active ? "page" : undefined}
-                      className={`relative flex min-w-0 items-center justify-center gap-1.5 rounded-xl px-1 py-3 text-[9px] font-bold tracking-[0.04em] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[#6B8DB5] sm:shrink-0 sm:gap-2 sm:px-4 sm:py-2.5 sm:text-xs sm:tracking-wider ${
+                      className={`relative flex h-[68px] min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl border px-1 text-center outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[#6B8DB5] sm:h-auto sm:shrink-0 sm:flex-row sm:gap-2 sm:border-transparent sm:px-4 sm:py-2.5 ${
                         active
-                          ? "text-white"
-                          : "text-neutral-200 hover:text-white"
+                          ? "border-[#6B8DB5] text-white sm:border-transparent"
+                          : "border-white/25 bg-white/[0.06] text-neutral-100 hover:border-white/50 hover:bg-white/10 hover:text-white sm:bg-transparent sm:hover:border-transparent"
                       }`}
                     >
                       {active && (
                         <motion.span
                           layoutId="active-navigation-indicator"
-                          className="absolute inset-0 rounded-xl bg-gradient-to-b from-[#24466B] to-[#142B4A] shadow-md shadow-black/40"
+                          className="absolute inset-0 rounded-[10px] bg-gradient-to-b from-[#24466B] to-[#142B4A] shadow-md shadow-black/40 sm:rounded-xl"
                           transition={{
                             type: "spring",
                             stiffness: 380,
@@ -699,11 +702,11 @@ export default function WelcomePage() {
                         />
                       )}
 
-                      <span className="relative z-10 shrink-0">
+                      <span className="relative z-10 flex h-4 w-4 shrink-0 items-center justify-center">
                         {section.icon}
                       </span>
 
-                      <span className="relative z-10 whitespace-nowrap">
+                      <span className="relative z-10 block w-full text-center text-[9px] font-bold uppercase leading-[1.15] tracking-normal min-[380px]:text-[10px] sm:w-auto sm:whitespace-nowrap sm:text-xs sm:leading-normal sm:tracking-wider">
                         {section.name}
                       </span>
                     </button>
@@ -732,7 +735,6 @@ export default function WelcomePage() {
               <LogOut size={17} />
             </button>
           </div>
-
         </div>
       </header>
 
