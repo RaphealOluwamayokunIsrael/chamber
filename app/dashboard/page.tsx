@@ -1,10 +1,10 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowRight,
-  Bell,
   Building2,
   ChevronRight,
   FolderPlus,
@@ -17,6 +17,7 @@ import {
   Command,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import NotificationBell from "../components/NotificationBell";
 
 type Chamber = {
   id: string;
@@ -166,22 +167,10 @@ export default function Dashboard() {
 
           <div className="flex items-center gap-2">
 
-            <button
-              type="button"
-              onClick={() =>
-                router.push("/notifications")
-              }
-              className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-black/[0.08] bg-white text-black/55 transition hover:bg-[#fafaf8]"
-              title="Notifications"
-            >
-              <Bell
-                size={16}
-                strokeWidth={1.7}
-              />
+            {/* NOTIFICATIONS */}
+            <NotificationBell />
 
-              <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#00e676]" />
-            </button>
-
+            {/* PROFILE */}
             <button
               type="button"
               onClick={() =>
@@ -331,7 +320,7 @@ export default function Dashboard() {
             {/* NOTIFICATIONS */}
             <DashboardAction
               icon={
-                <Bell size={18} />
+                <UserCircle size={18} />
               }
               title="Notifications"
               description="See important organizational activity."

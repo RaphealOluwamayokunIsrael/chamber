@@ -1,13 +1,15 @@
+
 "use client";
 
 import {
-  Bell,
   ChevronDown,
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
   Search,
 } from "lucide-react";
+
+import NotificationBell from "./NotificationBell";
 
 interface TopbarProps {
   chamberName?: string;
@@ -125,18 +127,7 @@ export default function Topbar({
         </button>
 
         {/* Notifications */}
-        <button
-          type="button"
-          aria-label="Notifications"
-          className="relative flex h-9 w-9 items-center justify-center border border-black/[0.08] bg-white text-[#5f625f] transition hover:bg-[#f3f2f0]"
-        >
-          <Bell
-            size={16}
-            strokeWidth={1.7}
-          />
-
-          <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#00e676]" />
-        </button>
+        <NotificationBell />
 
         {/* Workspace context */}
         <button

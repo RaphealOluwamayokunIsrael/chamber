@@ -4,20 +4,25 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
+import { AnimatePresence, motion, LayoutGroup } from "motion/react";
 import { supabase } from "@/lib/supabase";
 import {
   ArrowRight,
   ArrowUpRight,
+  Bell,
+  Bot,
   Building2,
   ChevronRight,
-  Clock3,
   Compass,
+  FolderPlus,
+  LogIn,
   LogOut,
+  MessageCircle,
   Plus,
-  ShieldCheck,
   Users,
+  Clock3,
+  Sparkles,
 } from "lucide-react";
 
 type Chamber = {
@@ -27,145 +32,129 @@ type Chamber = {
   created_at?: string;
 };
 
+type Section =
+  | "CREATE & JOIN"
+  | "BROWSE"
+  | "CONNECT"
+  | "MY CHAMBERS"
+  | "CHAMBER AI"
+  | "NOTIFICATIONS";
+
+const sections: { name: Section; icon: React.ReactNode }[] = [
+  { name: "CREATE & JOIN", icon: <Plus size={16} /> },
+  { name: "BROWSE", icon: <Compass size={16} /> },
+  { name: "CONNECT", icon: <Users size={16} /> },
+  { name: "MY CHAMBERS", icon: <Building2 size={16} /> },
+  { name: "CHAMBER AI", icon: <Bot size={16} /> },
+  { name: "NOTIFICATIONS", icon: <Bell size={16} /> },
+];
+
 const ICON_PATH = "/chamber-icon.svg.png";
 
-function Reveal({
-  children,
-  delay = 0,
-  className = "",
-}: {
-  children: ReactNode;
-  delay?: number;
-  className?: string;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
+const SERIF: React.CSSProperties = {
+  fontFamily:
+    '"Playfair Display", "Cormorant Garamond", Georgia, "Times New Roman", serif',
+};
 
-  useEffect(() => {
-    const element = ref.current;
-    if (!element) return;
+// Deep navy blue palette
+const DARK_GRADIENT =
+  "bg-gradient-to-br from-[#142B4A] via-[#0D1B30] to-[#07111F]";
 
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setVisible(true);
-      return;
-    }
+const GOLD_TEXT = "text-[#142B4A]";
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisible(true);
-          observer.unobserve(entry.target);
-        }
-      },
-      { threshold: 0.08 }
-    );
-
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
-
+function BrandMark() {
   return (
-    <div
-      ref={ref}
-      className={`transition-all duration-700 ease-out ${
-        visible ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0"
-      } ${className}`}
-      style={{ transitionDelay: visible ? `${delay}ms` : "0ms" }}
-    >
-      {children}
+    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-white to-neutral-200 shadow-md shadow-black/40 ring-1 ring-[#24466B]/60">
+      <Image
+        src={ICON_PATH}
+        alt="Chamber"
+        width={29}
+        height={29}
+        className="object-contain"
+        unoptimized
+      />
     </div>
   );
 }
 
-function BrandMark({ size = 44 }: { size?: number }) {
+function SectionHeading({
+  eyebrow,
+  title,
+  description,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+}) {
   return (
-    <span
-      className="inline-flex shrink-0 items-center justify-center rounded-2xl border border-blue-100 bg-blue-50"
-      style={{ width: size, height: size }}
-    >
-      <Image
-        src={ICON_PATH}
-        alt="Chamber logo"
-        width={size - 10}
-        height={size - 10}
-        className="object-contain"
-        unoptimized
-      />
-    </span>
+    <div className="mb-10">
+      <div className="flex items-center gap-3">
+        <span className="h-px w-10 bg-gradient-to-r from-[#142B4A] to-[#6B8DB5]" />
+        <p
+          className={`text-xs font-bold uppercase tracking-[0.24em] ${GOLD_TEXT}`}
+        >
+          {eyebrow}
+        </p>
+      </div>
+
+      <h1
+        style={SERIF}
+        className="mt-4 bg-gradient-to-b from-[#07111F] to-[#24466B] bg-clip-text text-4xl font-bold tracking-tight text-transparent sm:text-5xl"
+      >
+        {title}
+      </h1>
+
+      <p className="mt-4 max-w-2xl text-base leading-8 text-neutral-700">
+        {description}
+      </p>
+    </div>
   );
 }
 
 function ActionCard({
-  href,
-  onClick,
   icon,
   title,
   description,
   action,
-  featured = false,
+  href,
 }: {
-  href?: string;
-  onClick?: () => void;
-  icon: ReactNode;
+  icon: React.ReactNode;
   title: string;
   description: string;
   action: string;
-  featured?: boolean;
+  href: string;
 }) {
-  const styles = `group flex h-full flex-col rounded-2xl border p-5 text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${
-    featured
-      ? "border-[#173c72] bg-gradient-to-br from-[#164b88] to-[#102b56] text-white"
-      : "border-[#e5eaf1] bg-white text-[#152844] hover:border-blue-200"
-  }`;
+  return (
+    <Link
+      href={href}
+      className="group relative flex min-h-[230px] flex-col overflow-hidden rounded-3xl border border-neutral-300 bg-gradient-to-br from-white via-white to-neutral-100 p-7 shadow-sm outline-none transition-all duration-300 hover:-translate-y-1 hover:border-[#142B4A] hover:shadow-2xl focus-visible:ring-2 focus-visible:ring-[#142B4A] focus-visible:ring-offset-2"
+    >
+      <span className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#07111F] via-[#42658D] to-[#07111F] opacity-90" />
 
-  const content = (
-    <>
       <div
-        className={`mb-5 flex h-12 w-12 items-center justify-center rounded-xl ${
-          featured ? "bg-white/15" : "bg-blue-50 text-blue-600"
-        }`}
+        className={`flex h-14 w-14 items-center justify-center rounded-2xl ${DARK_GRADIENT} text-white shadow-lg shadow-[#142B4A]/20`}
       >
         {icon}
       </div>
 
-      <h3 className="text-lg font-semibold">{title}</h3>
-
-      <p
-        className={`mt-2 flex-1 text-sm leading-relaxed ${
-          featured ? "text-blue-100" : "text-slate-500"
-        }`}
+      <h2
+        style={SERIF}
+        className="mt-6 text-2xl font-bold tracking-tight text-neutral-950"
       >
+        {title}
+      </h2>
+
+      <p className="mt-2 flex-1 text-[15px] leading-7 text-neutral-700">
         {description}
       </p>
 
-      <div
-        className={`mt-6 flex items-center justify-between border-t pt-4 text-sm font-semibold ${
-          featured
-            ? "border-white/20 text-white"
-            : "border-slate-100 text-blue-600"
-        }`}
-      >
-        <span>{action}</span>
-        <ArrowRight
-          size={17}
-          className="transition-transform group-hover:translate-x-1"
-        />
+      <div className="mt-6 flex items-center justify-between border-t border-neutral-300 pt-4 text-sm font-bold uppercase tracking-wider text-[#142B4A]">
+        {action}
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#142B4A] text-white transition-all group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:bg-[#24466B]">
+          <ArrowUpRight size={16} />
+        </span>
       </div>
-    </>
-  );
-
-  if (href) {
-    return (
-      <Link href={href} className={styles}>
-        {content}
-      </Link>
-    );
-  }
-
-  return (
-    <button type="button" onClick={onClick} className={styles}>
-      {content}
-    </button>
+    </Link>
   );
 }
 
@@ -183,57 +172,94 @@ function ChamberCard({
     .map((word) => word[0]?.toUpperCase() || "")
     .join("");
 
-  const colors = [
-    "bg-blue-50 text-blue-600",
-    "bg-emerald-50 text-emerald-600",
-    "bg-amber-50 text-amber-600",
-    "bg-violet-50 text-violet-600",
-  ];
-
   return (
-    <Reveal delay={index * 60} className="h-full">
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, delay: index * 0.05 }}
+    >
       <Link
         href={`/chamber/${chamber.id}`}
-        className="group flex h-full flex-col rounded-2xl border border-[#e5eaf1] bg-white p-5 transition-all duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-lg"
+        className="group block rounded-3xl border border-neutral-300 bg-gradient-to-br from-white to-neutral-100 p-6 shadow-sm outline-none transition-all duration-300 hover:-translate-y-1 hover:border-[#142B4A] hover:shadow-xl focus-visible:ring-2 focus-visible:ring-[#142B4A] focus-visible:ring-offset-2"
       >
-        <div className="flex items-start gap-3">
+        <div className="flex items-start gap-4">
           <div
-            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl font-bold ${
-              colors[index % colors.length]
-            }`}
+            style={SERIF}
+            className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ${DARK_GRADIENT} text-lg font-bold text-white shadow-md shadow-[#142B4A]/20`}
           >
             {initials || <Building2 size={22} />}
           </div>
 
           <div className="min-w-0 flex-1">
-            <h3 className="truncate font-serif text-lg font-semibold text-[#142743]">
+            <h3
+              style={SERIF}
+              className="truncate text-xl font-bold text-neutral-950"
+            >
               {chamber.chamber_name}
             </h3>
-
-            <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-slate-500">
+            <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-neutral-700">
               {chamber.description ||
                 "A dedicated space to connect, organize and collaborate."}
             </p>
           </div>
 
           <ArrowUpRight
-            size={18}
-            className="shrink-0 text-blue-600 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1"
+            size={20}
+            className="shrink-0 text-neutral-500 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1 group-hover:text-[#142B4A]"
           />
         </div>
 
-        <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4">
-          <span className="flex items-center gap-2 text-xs text-slate-500">
-            <span className="h-2 w-2 rounded-full bg-blue-500" />
+        <div className="mt-5 flex items-center justify-between border-t border-neutral-300 pt-4">
+          <span className="flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200">
+            <span className="h-2 w-2 rounded-full bg-emerald-600" />
             Workspace
           </span>
 
-          <span className="flex items-center gap-1 text-sm font-semibold text-blue-600">
-            Enter <ChevronRight size={15} />
+          <span className="flex items-center gap-1 text-sm font-bold uppercase tracking-wider text-[#142B4A] transition-colors group-hover:text-[#42658D]">
+            Enter <ChevronRight size={16} />
           </span>
         </div>
       </Link>
-    </Reveal>
+    </motion.div>
+  );
+}
+
+function ComingSoon({
+  icon,
+  title,
+  description,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="relative flex min-h-[400px] flex-col items-center justify-center overflow-hidden rounded-[2rem] border border-neutral-300 bg-gradient-to-br from-white via-neutral-50 to-neutral-200 px-6 py-16 text-center shadow-sm">
+      <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full border border-neutral-300/70" />
+      <div className="pointer-events-none absolute -bottom-24 -left-16 h-64 w-64 rounded-full border border-neutral-300/70" />
+
+      <div
+        className={`relative flex h-20 w-20 items-center justify-center rounded-3xl ${DARK_GRADIENT} text-white shadow-xl shadow-[#142B4A]/25`}
+      >
+        {icon}
+      </div>
+
+      <span className="relative mt-7 rounded-full border border-[#42658D]/40 bg-[#EAF0F7] px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.22em] text-[#142B4A]">
+        Coming soon
+      </span>
+
+      <h2
+        style={SERIF}
+        className="relative mt-5 text-3xl font-bold tracking-tight text-neutral-950"
+      >
+        {title}
+      </h2>
+
+      <p className="relative mt-3 max-w-md text-[15px] leading-7 text-neutral-700">
+        {description}
+      </p>
+    </div>
   );
 }
 
@@ -248,6 +274,8 @@ export default function WelcomePage() {
   const [loadingChambers, setLoadingChambers] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [activeSection, setActiveSection] =
+    useState<Section>("CREATE & JOIN");
 
   useEffect(() => {
     const updateDateTime = () => {
@@ -258,8 +286,8 @@ export default function WelcomePage() {
         hour < 12
           ? "Good morning"
           : hour < 17
-          ? "Good afternoon"
-          : "Good evening"
+            ? "Good afternoon"
+            : "Good evening"
       );
 
       setCurrentTime(
@@ -281,7 +309,6 @@ export default function WelcomePage() {
     };
 
     updateDateTime();
-
     const interval = window.setInterval(updateDateTime, 1000);
 
     return () => window.clearInterval(interval);
@@ -349,7 +376,6 @@ export default function WelcomePage() {
         }
       } catch (error) {
         console.error("Failed to load workspace:", error);
-
         if (!cancelled) setLoadError(true);
       } finally {
         if (!cancelled) setLoadingChambers(false);
@@ -380,407 +406,352 @@ export default function WelcomePage() {
     router.refresh();
   }
 
-  function scrollToChambers() {
-    document
-      .getElementById("my-chambers")
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
+  function renderSection() {
+    switch (activeSection) {
+      case "CREATE & JOIN":
+        return (
+          <div>
+            <SectionHeading
+              eyebrow="Get started"
+              title={`${greeting}, ${firstName}.`}
+              description="Create a new Chamber or join an existing workspace. Everything you need to bring your people together starts here."
+            />
 
-  return (
-    <main className="min-h-screen bg-[#f8f9fb] text-[#152844]">
-      {/* HEADER */}
-      <header className="sticky top-0 z-40 border-b border-[#e6eaf0] bg-white/95 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4 sm:px-8">
-          <Link href="/welcome" className="flex items-center gap-3">
-            <BrandMark />
+            <div className="mb-8 grid gap-5 sm:grid-cols-2">
+              <ActionCard
+                href="/create"
+                icon={<FolderPlus size={25} />}
+                title="Create a Chamber"
+                description="Start a new workspace for your organization, team or community."
+                action="Create Chamber"
+              />
 
-            <div>
-              <p className="font-serif text-xl font-bold tracking-tight">
-                Chamber
-              </p>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                Your Workspace
-              </p>
-            </div>
-          </Link>
-
-          <div className="flex items-center gap-3 sm:gap-5">
-            <span className="hidden items-center gap-2 text-xs text-slate-500 sm:flex">
-              <ShieldCheck size={16} className="text-blue-600" />
-              Secure workspace
-            </span>
-
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#153e70] text-sm font-bold text-white">
-              {firstName[0]?.toUpperCase() || "U"}
+              <ActionCard
+                href="/join"
+                icon={<LogIn size={25} />}
+                title="Join a Chamber"
+                description="Already have a Chamber code? Join an existing workspace."
+                action="Join Chamber"
+              />
             </div>
 
-            <button
-              onClick={handleSignOut}
-              disabled={signingOut}
-              className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50"
-            >
-              <LogOut size={15} />
-              <span className="hidden sm:inline">
-                {signingOut ? "Signing out..." : "Sign out"}
-              </span>
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-7xl px-5 pb-12 pt-8 sm:px-8">
-        {/* WELCOME BANNER */}
-        <Reveal>
-          <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#10243f] via-[#123a68] to-[#0b55a5] p-7 text-white shadow-xl sm:p-10">
-            <div className="pointer-events-none absolute -right-20 -top-28 h-80 w-80 rounded-full border border-white/10" />
-            <div className="pointer-events-none absolute -right-12 -top-16 h-64 w-64 rounded-full border border-white/10" />
-            <div className="pointer-events-none absolute bottom-[-90px] right-32 h-56 w-56 rounded-full border border-white/10" />
-
-            <div className="relative z-10 grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
-              <div>
-                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-blue-200">
-                  Welcome to your workspace
-                </p>
-
-                <h1 className="font-serif text-3xl font-semibold tracking-tight sm:text-5xl">
-                  {greeting}, {firstName}.
-                </h1>
-
-                <p className="mt-4 max-w-xl text-sm leading-7 text-blue-100 sm:text-base">
-                  Your space to organize ideas, build meaningful
-                  connections, and bring people together.
-                  Everything starts here.
-                </p>
-
-                <div className="mt-7 flex flex-wrap gap-3">
-                  <Link
-                    href="/create"
-                    className="inline-flex items-center gap-2 rounded-xl bg-[#087bfa] px-5 py-3 text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-blue-500"
-                  >
-                    <Plus size={18} />
-                    Create Chamber
-                  </Link>
-
-                  <button
-                    onClick={scrollToChambers}
-                    className="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/20"
-                  >
-                    My Chambers
-                    <ArrowRight size={17} />
-                  </button>
+            <div className={`flex flex-wrap items-center justify-between gap-4 rounded-3xl ${DARK_GRADIENT} p-6 text-white shadow-xl shadow-[#142B4A]/20 ring-1 ring-[#42658D]/40`}>
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-white ring-1 ring-white/20">
+                  <Clock3 size={22} />
+                </div>
+                <div>
+                  <p className="text-sm font-bold uppercase tracking-wider text-white">
+                    Your local time
+                  </p>
+                  <p className="mt-1 text-sm text-neutral-300">
+                    {currentDate}
+                  </p>
                 </div>
               </div>
 
-              <div className="relative flex min-w-[220px] flex-col items-center rounded-2xl border border-white/20 bg-white/10 p-6 text-center backdrop-blur-sm">
-                <Clock3 size={23} className="mb-3 text-blue-200" />
-
-                <p className="text-xs uppercase tracking-widest text-blue-100">
-                  Local Time
-                </p>
-
-                <p className="mt-2 text-3xl font-semibold tabular-nums">
-                  {currentTime || "--:--"}
-                </p>
-
-                <p className="mt-2 text-xs text-blue-100">
-                  {currentDate || "Loading date..."}
-                </p>
-              </div>
-            </div>
-          </section>
-        </Reveal>
-
-        {/* WORKSPACE SUMMARY */}
-        <section className="mt-7 grid gap-4 sm:grid-cols-3">
-          <Reveal delay={60}>
-            <div className="rounded-2xl border border-[#e5eaf1] bg-white p-5">
-              <p className="text-xs font-medium text-slate-500">
-                Total Chambers
-              </p>
-              <p className="mt-2 text-3xl font-bold text-[#153e70]">
-                {loadingChambers ? "—" : chambers.length}
-              </p>
-              <p className="mt-2 text-xs text-slate-400">
-                Your active workspaces
+              <p
+                style={SERIF}
+                className="text-4xl font-bold tabular-nums text-white"
+              >
+                {currentTime || "--:--"}
               </p>
             </div>
-          </Reveal>
-
-          <Reveal delay={120}>
-            <div className="rounded-2xl border border-[#e5eaf1] bg-white p-5">
-              <p className="text-xs font-medium text-slate-500">
-                Connection
-              </p>
-              <div className="mt-3 flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                <span className="text-lg font-semibold text-[#153e70]">
-                  Connected
-                </span>
-              </div>
-              <p className="mt-2 text-xs text-slate-400">
-                Your Chamber workspace
-              </p>
-            </div>
-          </Reveal>
-
-          <Reveal delay={180}>
-            <Link
-              href="/browse"
-              className="group block rounded-2xl border border-[#e5eaf1] bg-white p-5 transition-all hover:border-blue-200 hover:shadow-md"
-            >
-              <p className="text-xs font-medium text-slate-500">
-                Discover
-              </p>
-              <div className="mt-3 flex items-center justify-between">
-                <span className="text-lg font-semibold text-[#153e70]">
-                  Explore Chambers
-                </span>
-                <ArrowUpRight
-                  size={19}
-                  className="text-blue-600 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1"
-                />
-              </div>
-              <p className="mt-2 text-xs text-slate-400">
-                Find communities and opportunities
-              </p>
-            </Link>
-          </Reveal>
-        </section>
-
-        {/* QUICK ACTIONS */}
-        <Reveal>
-          <div className="mb-5 mt-12">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600">
-              Get started
-            </p>
-            <h2 className="mt-2 font-serif text-2xl font-semibold text-[#142743] sm:text-3xl">
-              What would you like to do?
-            </h2>
-            <p className="mt-2 text-sm text-slate-500">
-              Everything you need to make your next move.
-            </p>
           </div>
-        </Reveal>
+        );
 
-        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Reveal delay={60} className="h-full">
-            <ActionCard
-              href="/create"
-              icon={<Plus size={23} />}
-              title="Create a Chamber"
-              description="Start a new workspace and bring your people together."
-              action="Create now"
-              featured
+      case "BROWSE":
+        return (
+          <div>
+            <SectionHeading
+              eyebrow="Discover"
+              title="Explore Chambers."
+              description="Find public Chambers, discover communities and explore opportunities to connect with organizations."
             />
-          </Reveal>
 
-          <Reveal delay={120} className="h-full">
-            <ActionCard
-              href="/join"
-              icon={<Users size={23} />}
-              title="Join a Chamber"
-              description="Connect with an existing team or community."
-              action="Join now"
-            />
-          </Reveal>
+            <div className="relative overflow-hidden rounded-[2rem] border border-neutral-300 bg-gradient-to-br from-white via-neutral-50 to-neutral-200 p-8 shadow-sm sm:p-12">
+              <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full border border-neutral-300/70" />
 
-          <Reveal delay={180} className="h-full">
-            <ActionCard
-              href="/browse"
-              icon={<Compass size={23} />}
-              title="Discover"
-              description="Explore new Chambers and find where you belong."
-              action="Explore"
-            />
-          </Reveal>
-
-          <Reveal delay={240} className="h-full">
-            <ActionCard
-              onClick={scrollToChambers}
-              icon={<Building2 size={23} />}
-              title="My Chambers"
-              description="Return to the spaces you are already part of."
-              action="View workspaces"
-            />
-          </Reveal>
-        </section>
-
-        {/* MY CHAMBERS */}
-        <section id="my-chambers" className="scroll-mt-28 pt-14">
-          <Reveal>
-            <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600">
-                  Your spaces
-                </p>
-                <h2 className="mt-2 font-serif text-2xl font-semibold text-[#142743] sm:text-3xl">
-                  My Chambers
-                </h2>
-                <p className="mt-2 text-sm text-slate-500">
-                  Pick up where you left off.
-                </p>
+              <div
+                className={`relative flex h-16 w-16 items-center justify-center rounded-2xl ${DARK_GRADIENT} text-white shadow-lg shadow-[#142B4A]/20`}
+              >
+                <Compass size={29} />
               </div>
+
+              <h2
+                style={SERIF}
+                className="relative mt-6 text-3xl font-bold tracking-tight text-neutral-950"
+              >
+                Discover your next community
+              </h2>
+
+              <p className="relative mt-3 max-w-xl text-base leading-8 text-neutral-700">
+                Explore available public workspaces and find a Chamber that
+                aligns with your interests and goals.
+              </p>
 
               <Link
                 href="/browse"
-                className="inline-flex items-center gap-2 text-sm font-semibold text-blue-600 hover:underline"
+                className={`relative mt-7 inline-flex items-center gap-2 rounded-xl ${DARK_GRADIENT} px-6 py-3.5 text-sm font-bold uppercase tracking-wider text-white shadow-lg shadow-[#142B4A]/25 transition hover:-translate-y-0.5 hover:shadow-xl`}
               >
-                Browse Chambers <ArrowRight size={16} />
+                Explore Chambers <ArrowRight size={17} />
               </Link>
             </div>
-          </Reveal>
+          </div>
+        );
 
-          {loadingChambers ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {[1, 2, 3].map((item) => (
-                <div
-                  key={item}
-                  className="h-40 animate-pulse rounded-2xl border border-slate-200 bg-white p-5"
+      case "CONNECT":
+        return (
+          <div>
+            <SectionHeading
+              eyebrow="People and relationships"
+              title="Connect beyond your Chambers."
+              description="A space to discover people across Chamber and build direct connections beyond shared workspaces."
+            />
+            <ComingSoon
+              icon={<MessageCircle size={32} />}
+              title="Your connections start here."
+              description="Discover people, send connection requests and have personal conversations across the Chamber community. This feature is under development."
+            />
+          </div>
+        );
+
+      case "MY CHAMBERS":
+        return (
+          <div>
+            <SectionHeading
+              eyebrow="Your workspaces"
+              title="My Chambers."
+              description="All your organizations, teams and communities in one place."
+            />
+
+            {loadingChambers ? (
+              <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+                {[1, 2, 3].map((item) => (
+                  <div
+                    key={item}
+                    className="h-44 animate-pulse rounded-3xl border border-neutral-300 bg-gradient-to-br from-white to-neutral-100 p-6"
+                  >
+                    <div className="h-12 w-12 rounded-2xl bg-neutral-300" />
+                    <div className="mt-4 h-4 w-2/3 rounded bg-neutral-300" />
+                    <div className="mt-3 h-3 w-full rounded bg-neutral-200" />
+                  </div>
+                ))}
+              </div>
+            ) : loadError ? (
+              <div
+                role="alert"
+                className="rounded-3xl border border-red-300 bg-gradient-to-br from-red-50 to-white p-10 text-center"
+              >
+                <h3
+                  style={SERIF}
+                  className="text-xl font-bold text-red-900"
                 >
-                  <div className="h-11 w-11 rounded-xl bg-slate-100" />
-                  <div className="mt-4 h-4 w-2/3 rounded bg-slate-100" />
-                  <div className="mt-3 h-3 w-full rounded bg-slate-100" />
-                </div>
-              ))}
-            </div>
-          ) : loadError ? (
-            <div className="rounded-2xl border border-red-100 bg-white p-10 text-center">
-              <h3 className="font-semibold text-[#142743]">
-                Unable to load your Chambers
-              </h3>
-              <p className="mt-2 text-sm text-slate-500">
-                Please refresh the page and try again.
-              </p>
-            </div>
-          ) : chambers.length === 0 ? (
-            <Reveal>
-              <div className="rounded-2xl border border-dashed border-blue-200 bg-white px-6 py-14 text-center">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                  Unable to load your Chambers
+                </h3>
+                <p className="mt-2 text-sm text-red-800">
+                  Please refresh the page and try again.
+                </p>
+              </div>
+            ) : chambers.length === 0 ? (
+              <div className="rounded-[2rem] border-2 border-dashed border-neutral-400 bg-gradient-to-br from-white to-neutral-100 px-6 py-16 text-center">
+                <div
+                  className={`mx-auto flex h-16 w-16 items-center justify-center rounded-2xl ${DARK_GRADIENT} text-white shadow-lg shadow-[#142B4A]/20`}
+                >
                   <Building2 size={30} />
                 </div>
 
-                <h3 className="mt-5 font-serif text-xl font-semibold text-[#142743]">
+                <h3
+                  style={SERIF}
+                  className="mt-6 text-2xl font-bold text-neutral-950"
+                >
                   Your journey starts here
                 </h3>
 
-                <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-slate-500">
-                  You are not part of any Chamber yet. Create your
-                  first workspace or join an existing one.
+                <p className="mx-auto mt-2 max-w-md text-[15px] leading-7 text-neutral-700">
+                  You are not part of any Chamber yet. Create your first
+                  workspace or join an existing one.
                 </p>
 
-                <div className="mt-6 flex flex-wrap justify-center gap-3">
+                <div className="mt-7 flex flex-wrap justify-center gap-3">
                   <Link
                     href="/create"
-                    className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
+                    className={`rounded-xl ${DARK_GRADIENT} px-6 py-3 text-sm font-bold uppercase tracking-wider text-white shadow-md transition hover:-translate-y-0.5 hover:shadow-lg`}
                   >
                     Create Chamber
                   </Link>
 
                   <Link
                     href="/join"
-                    className="rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold text-[#153e70] transition-colors hover:bg-slate-50"
+                    className="rounded-xl border-2 border-[#142B4A] bg-white px-6 py-3 text-sm font-bold uppercase tracking-wider text-[#142B4A] transition hover:bg-[#142B4A] hover:text-white"
                   >
                     Join Chamber
                   </Link>
                 </div>
               </div>
-            </Reveal>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {chambers.map((chamber, index) => (
-                <ChamberCard
-                  key={chamber.id}
-                  chamber={chamber}
-                  index={index}
-                />
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* ACTIVITY */}
-        <Reveal>
-          <section className="mt-14">
-            <div className="mb-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600">
-                Stay informed
-              </p>
-              <h2 className="mt-2 font-serif text-2xl font-semibold text-[#142743]">
-                Recent Activity
-              </h2>
-            </div>
-
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-[#e5eaf1] bg-white px-6 py-12 text-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-                <Clock3 size={25} />
+            ) : (
+              <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+                {chambers.map((chamber, index) => (
+                  <ChamberCard
+                    key={chamber.id}
+                    chamber={chamber}
+                    index={index}
+                  />
+                ))}
               </div>
-
-              <h3 className="mt-4 font-semibold text-[#142743]">
-                Your activity, all in one place
-              </h3>
-
-              <p className="mt-2 max-w-md text-sm leading-relaxed text-slate-500">
-                Updates from your Chambers will appear here when
-                the activity feature becomes available.
-              </p>
-
-              <span className="mt-4 rounded-full bg-blue-50 px-4 py-1.5 text-xs font-semibold text-blue-600">
-                Coming soon
-              </span>
-            </div>
-          </section>
-        </Reveal>
-
-        {/* CLOSING SECTION */}
-        <Reveal>
-          <section className="mt-12 flex flex-col items-start justify-between gap-5 rounded-2xl border border-blue-100 bg-[#eef5ff] p-7 sm:flex-row sm:items-center">
-            <div>
-              <h2 className="font-serif text-xl font-semibold text-[#153e70]">
-                Great things begin with connection.
-              </h2>
-
-              <p className="mt-2 text-sm text-slate-600">
-                Bring your community together in one organized space.
-              </p>
-            </div>
+            )}
 
             <Link
               href="/create"
-              className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-[#087bfa] px-5 py-3 text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-blue-700"
+              className="mt-8 inline-flex items-center gap-2 rounded-full border-2 border-[#142B4A] px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-[#142B4A] transition hover:bg-[#142B4A] hover:text-white"
             >
-              Get Started <ArrowRight size={17} />
+              <Plus size={17} /> Create another Chamber
             </Link>
-          </section>
-        </Reveal>
-      </div>
+          </div>
+        );
 
-      {/* FOOTER */}
-      <footer className="border-t border-[#e5eaf1] bg-white">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-5 py-6 text-center sm:flex-row sm:px-8 sm:text-left">
-          <div className="flex items-center gap-3">
-            <BrandMark size={34} />
+      case "CHAMBER AI":
+        return (
+          <div>
+            <SectionHeading
+              eyebrow="Workspace intelligence"
+              title="Meet Chamber AI."
+              description="An intelligent overview of activity, conversations and developments across your workspaces."
+            />
+            <ComingSoon
+              icon={<Sparkles size={32} />}
+              title="A clearer view of your organization."
+              description="Chamber AI will help you understand discussions, identify important developments and generate useful summaries. This feature is under development."
+            />
+          </div>
+        );
 
-            <div>
-              <p className="text-sm font-bold text-[#153e70]">
-                Chamber
-              </p>
-              <p className="text-xs text-slate-400">
-                Where Organization Meets Focus.
-              </p>
-            </div>
+      case "NOTIFICATIONS":
+        return (
+          <div>
+            <SectionHeading
+              eyebrow="Stay informed"
+              title="Notifications."
+              description="A central place for important updates and activity across Chamber."
+            />
+            <ComingSoon
+              icon={<Bell size={32} />}
+              title="Your notification centre."
+              description="Updates from your Chambers, personal connections, invitations and announcements will be brought together here."
+            />
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  }
+
+  return (
+    <main className="min-h-screen bg-gradient-to-b from-neutral-100 via-white to-neutral-100 text-neutral-950">
+      <header className="sticky top-0 z-50 border-b border-[#24466B]/50 bg-gradient-to-r from-black via-neutral-900 to-black text-white shadow-lg shadow-black/30">
+        <div className="mx-auto flex min-h-[72px] max-w-[1500px] items-center justify-between gap-4 px-4 sm:px-7">
+          <Link href="/welcome" className="flex shrink-0 items-center gap-3">
+            <BrandMark />
+            <span
+              style={SERIF}
+              className="text-2xl font-bold tracking-tight text-white"
+            >
+              Chamber
+            </span>
+          </Link>
+
+          <div className="flex min-w-0 flex-1 justify-center">
+            <LayoutGroup id="chamber-navigation">
+              <nav className="flex max-w-full items-center gap-1 overflow-x-auto rounded-2xl bg-white/5 p-1 ring-1 ring-white/10 scrollbar-none">
+                {sections.map((section) => {
+                  const active = activeSection === section.name;
+
+                  return (
+                    <button
+                      key={section.name}
+                      type="button"
+                      onClick={() => setActiveSection(section.name)}
+                      aria-current={active ? "page" : undefined}
+                      className={`relative flex shrink-0 items-center gap-2 rounded-xl px-3 py-2.5 text-[11px] font-bold tracking-wider outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[#6B8DB5] sm:px-4 sm:text-xs ${
+                        active
+                          ? "text-white"
+                          : "text-neutral-200 hover:text-white"
+                      }`}
+                    >
+                      {active && (
+                        <motion.span
+                          layoutId="active-navigation-indicator"
+                          className="absolute inset-0 rounded-xl bg-gradient-to-b from-[#24466B] to-[#142B4A] shadow-md shadow-black/40"
+                          transition={{
+                            type: "spring",
+                            stiffness: 380,
+                            damping: 32,
+                          }}
+                        />
+                      )}
+
+                      <span className="relative z-10">{section.icon}</span>
+                      <span className="relative z-10 whitespace-nowrap">
+                        {section.name}
+                      </span>
+                    </button>
+                  );
+                })}
+              </nav>
+            </LayoutGroup>
           </div>
 
-          <div className="text-xs text-slate-500">
-            Built by{" "}
-            <Link
-              href="/about-rio-lab"
-              className="font-semibold text-blue-600 hover:underline"
+          <div className="flex shrink-0 items-center gap-3">
+            <div
+              title={firstName}
+              className="hidden h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#42658D] to-[#142B4A] text-sm font-bold text-white ring-2 ring-white/40 sm:flex"
             >
-              RIO LAB
-            </Link>
+              {firstName[0]?.toUpperCase() || "U"}
+            </div>
+
+            <button
+              onClick={handleSignOut}
+              disabled={signingOut}
+              title="Sign out"
+              aria-label="Sign out"
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white/10 text-white transition hover:bg-[#142B4A] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6B8DB5] disabled:opacity-50"
+            >
+              <LogOut size={17} />
+            </button>
           </div>
         </div>
-      </footer>
+      </header>
+
+      <div className="mx-auto min-h-[calc(100vh-72px)] max-w-[1500px] px-5 py-10 sm:px-8 sm:py-14">
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.section
+            key={activeSection}
+            initial={{ opacity: 0, y: 12, filter: "blur(4px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            exit={{ opacity: 0, y: -8, filter: "blur(3px)" }}
+            transition={{
+              duration: 0.28,
+              ease: [0.22, 1, 0.36, 1],
+            }}
+          >
+            {renderSection()}
+          </motion.section>
+        </AnimatePresence>
+
+        <footer className="mt-20 flex flex-col items-center justify-between gap-3 border-t border-neutral-300 pt-6 text-sm text-neutral-600 sm:flex-row">
+          <p style={SERIF} className="italic">
+            Chamber — Where Organization Meets Focus.
+          </p>
+
+          <Link
+            href="/about-rio-lab"
+            className="font-bold text-[#142B4A] underline-offset-4 transition hover:text-[#42658D] hover:underline"
+          >
+            Built by RIO LAB
+          </Link>
+        </footer>
+      </div>
     </main>
   );
 }
