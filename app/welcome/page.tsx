@@ -650,95 +650,56 @@ export default function WelcomePage() {
 
   return (
     <main className="min-h-screen w-full overflow-x-hidden bg-white text-neutral-950">
-      <header className="sticky top-0 z-50 border-b border-[#24466B]/50 bg-black text-white shadow-lg shadow-black/30">
-        <div className="mx-auto grid w-full max-w-[1500px] grid-cols-[1fr_auto] items-center gap-x-3 gap-y-3 px-3 py-3 sm:flex sm:min-h-[72px] sm:justify-between sm:gap-4 sm:px-7 sm:py-0">
-          {/* BRAND */}
-          <Link
-            href="/welcome"
-            className="col-start-1 row-start-1 flex shrink-0 items-center gap-3 pl-1 sm:pl-0"
-          >
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-black text-white shadow-lg">
+        <div className="mx-auto flex h-[72px] max-w-[1500px] items-center justify-between px-4 sm:px-8">
+          <Link href="/welcome" className="flex min-w-0 items-center gap-3">
             <BrandMark />
-            <span
-              style={SERIF}
-              className="text-2xl font-bold tracking-tight text-white"
-            >
-              Chamber
-            </span>
+            <span style={SERIF} className="truncate text-2xl font-bold tracking-tight sm:text-3xl">Chamber</span>
           </Link>
-
-          {/* NAVIGATION
-              Mobile  : 3 x 2 grid of individual bordered tiles (icon above label)
-              Desktop : single horizontal pill track (unchanged look)           */}
-          <div className="col-span-2 row-start-2 w-full min-w-0 sm:flex sm:flex-1 sm:justify-center">
-            <LayoutGroup id="chamber-navigation">
-              <nav
-                aria-label="Chamber sections"
-                className="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto sm:max-w-full sm:items-center sm:gap-1 sm:overflow-x-auto sm:rounded-2xl sm:bg-white/5 sm:p-1 sm:ring-1 sm:ring-white/10 sm:scrollbar-none"
-              >
-                {sections.map((section) => {
-                  const active = activeSection === section.name;
-
-                  return (
-                    <button
-                      key={section.name}
-                      type="button"
-                      onClick={() => setActiveSection(section.name)}
-                      aria-current={active ? "page" : undefined}
-                      className={`relative flex h-[68px] min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl border px-1 text-center outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[#6B8DB5] sm:h-auto sm:shrink-0 sm:flex-row sm:gap-2 sm:border-transparent sm:px-4 sm:py-2.5 ${
-                        active
-                          ? "border-[#6B8DB5] text-white sm:border-transparent"
-                          : "border-white/25 bg-white/[0.06] text-neutral-100 hover:border-white/50 hover:bg-white/10 hover:text-white sm:bg-transparent sm:hover:border-transparent"
-                      }`}
-                    >
-                      {active && (
-                        <motion.span
-                          layoutId="active-navigation-indicator"
-                          className="absolute inset-0 rounded-[10px] bg-gradient-to-b from-[#24466B] to-[#142B4A] shadow-md shadow-black/40 sm:rounded-xl"
-                          transition={{
-                            type: "spring",
-                            stiffness: 380,
-                            damping: 32,
-                          }}
-                        />
-                      )}
-
-                      <span className="relative z-10 flex h-4 w-4 shrink-0 items-center justify-center">
-                        {section.icon}
-                      </span>
-
-                      <span className="relative z-10 block w-full text-center text-[9px] font-bold uppercase leading-[1.15] tracking-normal min-[380px]:text-[10px] sm:w-auto sm:whitespace-nowrap sm:text-xs sm:leading-normal sm:tracking-wider">
-                        {section.name}
-                      </span>
-                    </button>
-                  );
-                })}
-              </nav>
-            </LayoutGroup>
-          </div>
-
-          {/* SIGN OUT */}
-          <div className="col-start-2 row-start-1 flex shrink-0 items-center justify-end gap-3">
-            <div
-              title={firstName}
-              className="hidden h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#42658D] to-[#142B4A] text-sm font-bold text-white ring-2 ring-white/40 sm:flex"
-            >
+          <div className="flex items-center gap-3">
+            <div title={firstName} className="hidden h-9 w-9 items-center justify-center rounded-full bg-[#142B4A] text-sm font-bold ring-1 ring-white/30 sm:flex">
               {firstName[0]?.toUpperCase() || "U"}
             </div>
-
-            <button
-              onClick={handleSignOut}
-              disabled={signingOut}
-              title="Sign out"
-              aria-label="Sign out"
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white/10 text-white transition hover:bg-[#142B4A] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6B8DB5] disabled:opacity-50"
-            >
-              <LogOut size={17} />
+            <button type="button" onClick={handleSignOut} disabled={signingOut} aria-label="Sign out" title="Sign out"
+              className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/40 bg-white/5 transition hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-50">
+              <LogOut size={19} />
             </button>
           </div>
         </div>
       </header>
 
-      <div className="mx-auto min-h-[calc(100vh-72px)] w-full max-w-[1500px] px-4 py-8 sm:px-8 sm:py-14">
+      {/* Boardroom artwork: place chamber-boardroom-blue.png in public/ */}
+      <section aria-label="Chamber workspace" className="relative mx-auto h-[220px] w-full max-w-[1500px] overflow-hidden bg-[#07182e] sm:h-[330px] lg:h-[430px]">
+        <Image src="/chamber-boardroom-blue.png" alt="Luxurious Chamber boardroom, developed by RIO LAB"
+          fill priority sizes="(max-width: 640px) 100vw, 1500px" className="object-cover object-[65%_center] sm:object-center" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#04152e]/55 via-transparent to-transparent" />
+        <svg aria-hidden="true" viewBox="0 0 1440 90" preserveAspectRatio="none" className="pointer-events-none absolute -bottom-px left-0 h-9 w-full sm:h-14">
+          <path d="M0 44 C330 -15 710 130 1440 28 L1440 90 L0 90 Z" fill="#082653" />
+          <path d="M0 60 C400 5 810 130 1440 43 L1440 90 L0 90 Z" fill="#061b39" />
+        </svg>
+      </section>
+
+      {/* Six separate, equal-height navigation tiles; scroll-free on mobile. */}
+      <div className="relative z-10 mx-auto w-full max-w-[1500px] bg-gradient-to-b from-[#061b39] via-[#e8f1fc] to-white px-3 pb-7 pt-3 sm:px-8 sm:pb-9">
+        <LayoutGroup id="chamber-navigation">
+          <nav aria-label="Chamber sections" className="grid grid-cols-3 gap-2.5 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
+            {sections.map((section) => {
+              const active = activeSection === section.name;
+              return (
+                <button key={section.name} type="button" onClick={() => setActiveSection(section.name)}
+                  aria-current={active ? "page" : undefined}
+                  className={`group relative isolate flex h-[94px] min-w-0 flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border px-1.5 py-3 text-center shadow-[0_6px_16px_rgba(2,17,39,0.16)] transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 sm:h-[112px] sm:gap-3 ${active ? "border-[#55b5ff] bg-gradient-to-b from-[#123c78] to-[#06152e] text-white ring-1 ring-[#2e96ff] shadow-[0_0_18px_rgba(33,150,243,0.55)]" : "border-[#d7e2f1] bg-gradient-to-b from-white to-[#f3f7ff] text-[#071426] hover:border-[#73b7fa]"}`}>
+                  {active && <motion.span layoutId="active-navigation-indicator" className="pointer-events-none absolute inset-0 -z-10 rounded-2xl bg-gradient-to-b from-[#123c78] to-[#06152e]" transition={{type:"spring", stiffness:380, damping:32}} />}
+                  <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl sm:h-10 sm:w-10 ${active ? "bg-[#164f96] text-white" : "bg-[#eaf2ff] text-[#071d41]"}`}>{section.icon}</span>
+                  <span className="w-full break-normal text-center text-[9px] font-extrabold uppercase leading-tight tracking-[-0.02em] min-[370px]:text-[10px] sm:text-xs">{section.name}</span>
+                </button>
+              );
+            })}
+          </nav>
+        </LayoutGroup>
+      </div>
+
+      <div className="mx-auto min-h-[calc(100vh-72px)] w-full max-w-[1500px] px-4 pb-10 pt-5 sm:px-8 sm:pt-10">
         <AnimatePresence mode="wait" initial={false}>
           <motion.section
             key={activeSection}
