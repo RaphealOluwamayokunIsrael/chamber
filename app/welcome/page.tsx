@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -6,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion, LayoutGroup } from "motion/react";
 import { supabase } from "@/lib/supabase";
+import ChamberAssistant from "../components/welcome/ChamberAssistant";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -21,7 +23,7 @@ import {
   Plus,
   Users,
   Clock3,
-  Sparkles,
+  Crown,
 } from "lucide-react";
 
 type Chamber = {
@@ -55,7 +57,6 @@ const SERIF: React.CSSProperties = {
     '"Playfair Display", "Cormorant Garamond", Georgia, "Times New Roman", serif',
 };
 
-// Deep navy blue palette
 const DARK_GRADIENT =
   "bg-gradient-to-br from-[#142B4A] via-[#0D1B30] to-[#07111F]";
 
@@ -434,6 +435,26 @@ export default function WelcomePage() {
               />
             </div>
 
+            <div className="mb-8 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#277bd2] bg-gradient-to-r from-[#061b39] via-[#083675] to-[#061b39] px-4 py-3 text-white shadow-[0_6px_18px_rgba(3,30,72,0.2)] sm:px-5">
+              <div className="flex min-w-0 items-center gap-3">
+                <Crown size={24} className="shrink-0 text-[#f4c76a]" aria-hidden="true" />
+                <div className="min-w-0">
+                  <p className="text-base font-bold tracking-tight">
+                    Chamber <span className="rounded-md bg-[#176be4] px-2 py-0.5 text-sm">Pro</span>
+                  </p>
+                  <p className="mt-0.5 text-xs text-blue-100 sm:text-sm">
+                    Explore premium workspace features.
+                  </p>
+                </div>
+              </div>
+              <Link
+                href="/pricing"
+                className="inline-flex shrink-0 items-center gap-2 rounded-full border border-white/80 px-4 py-2 text-sm font-bold text-white transition hover:bg-white hover:text-[#082653] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+              >
+                View plans <ArrowRight size={16} aria-hidden="true" />
+              </Link>
+            </div>
+
             <div
               className={`flex flex-wrap items-center justify-between gap-4 rounded-3xl ${DARK_GRADIENT} p-6 text-white shadow-xl shadow-[#142B4A]/20 ring-1 ring-[#42658D]/40`}
             >
@@ -544,10 +565,7 @@ export default function WelcomePage() {
                 role="alert"
                 className="rounded-3xl border border-red-300 bg-gradient-to-br from-red-50 to-white p-10 text-center"
               >
-                <h3
-                  style={SERIF}
-                  className="text-xl font-bold text-red-900"
-                >
+                <h3 style={SERIF} className="text-xl font-bold text-red-900">
                   Unable to load your Chambers
                 </h3>
                 <p className="mt-2 text-sm text-red-800">
@@ -619,11 +637,7 @@ export default function WelcomePage() {
               title="Meet Chamber AI."
               description="An intelligent overview of activity, conversations and developments across your workspaces."
             />
-            <ComingSoon
-              icon={<Sparkles size={32} />}
-              title="A clearer view of your organization."
-              description="Chamber AI will help you understand discussions, identify important developments and generate useful summaries. This feature is under development."
-            />
+            <ChamberAssistant />
           </div>
         );
 
@@ -654,44 +668,107 @@ export default function WelcomePage() {
         <div className="mx-auto flex h-[72px] max-w-[1500px] items-center justify-between px-4 sm:px-8">
           <Link href="/welcome" className="flex min-w-0 items-center gap-3">
             <BrandMark />
-            <span style={SERIF} className="truncate text-2xl font-bold tracking-tight sm:text-3xl">Chamber</span>
+            <span
+              style={SERIF}
+              className="truncate text-2xl font-bold tracking-tight sm:text-3xl"
+            >
+              Chamber
+            </span>
           </Link>
           <div className="flex items-center gap-3">
-            <div title={firstName} className="hidden h-9 w-9 items-center justify-center rounded-full bg-[#142B4A] text-sm font-bold ring-1 ring-white/30 sm:flex">
+            <div
+              title={firstName}
+              className="hidden h-9 w-9 items-center justify-center rounded-full bg-[#142B4A] text-sm font-bold ring-1 ring-white/30 sm:flex"
+            >
               {firstName[0]?.toUpperCase() || "U"}
             </div>
-            <button type="button" onClick={handleSignOut} disabled={signingOut} aria-label="Sign out" title="Sign out"
-              className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/40 bg-white/5 transition hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-50">
+            <button
+              type="button"
+              onClick={handleSignOut}
+              disabled={signingOut}
+              aria-label="Sign out"
+              title="Sign out"
+              className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/40 bg-white/5 transition hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-50"
+            >
               <LogOut size={19} />
             </button>
           </div>
         </div>
       </header>
 
-      {/* Boardroom artwork: place chamber-boardroom-blue.png in public/ */}
-      <section aria-label="Chamber workspace" className="relative mx-auto h-[220px] w-full max-w-[1500px] overflow-hidden bg-[#07182e] sm:h-[330px] lg:h-[430px]">
-        <Image src="/chamber-boardroom-blue.png" alt="Luxurious Chamber boardroom, developed by RIO LAB"
-          fill priority sizes="(max-width: 640px) 100vw, 1500px" className="object-cover object-[65%_center] sm:object-center" />
+      <section
+        aria-label="Chamber workspace"
+        className="relative mx-auto h-[220px] w-full max-w-[1500px] overflow-hidden bg-[#07182e] sm:h-[330px] lg:h-[430px]"
+      >
+        <Image
+          src="/chamber-boardroom-blue.png"
+          alt="Luxurious Chamber boardroom, developed by RIO LAB"
+          fill
+          priority
+          sizes="(max-width: 640px) 100vw, 1500px"
+          className="object-cover object-[65%_center] sm:object-center"
+        />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#04152e]/55 via-transparent to-transparent" />
-        <svg aria-hidden="true" viewBox="0 0 1440 90" preserveAspectRatio="none" className="pointer-events-none absolute -bottom-px left-0 h-9 w-full sm:h-14">
-          <path d="M0 44 C330 -15 710 130 1440 28 L1440 90 L0 90 Z" fill="#082653" />
-          <path d="M0 60 C400 5 810 130 1440 43 L1440 90 L0 90 Z" fill="#061b39" />
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 1440 90"
+          preserveAspectRatio="none"
+          className="pointer-events-none absolute -bottom-px left-0 h-9 w-full sm:h-14"
+        >
+          <path
+            d="M0 44 C330 -15 710 130 1440 28 L1440 90 L0 90 Z"
+            fill="#082653"
+          />
+          <path
+            d="M0 60 C400 5 810 130 1440 43 L1440 90 L0 90 Z"
+            fill="#061b39"
+          />
         </svg>
       </section>
 
-      {/* Six separate, equal-height navigation tiles; scroll-free on mobile. */}
       <div className="relative z-10 mx-auto w-full max-w-[1500px] bg-gradient-to-b from-[#061b39] via-[#e8f1fc] to-white px-3 pb-7 pt-3 sm:px-8 sm:pb-9">
         <LayoutGroup id="chamber-navigation">
-          <nav aria-label="Chamber sections" className="grid grid-cols-3 gap-2.5 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
+          <nav
+            aria-label="Chamber sections"
+            className="grid grid-cols-3 gap-2.5 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6"
+          >
             {sections.map((section) => {
               const active = activeSection === section.name;
               return (
-                <button key={section.name} type="button" onClick={() => setActiveSection(section.name)}
+                <button
+                  key={section.name}
+                  type="button"
+                  onClick={() => setActiveSection(section.name)}
                   aria-current={active ? "page" : undefined}
-                  className={`group relative isolate flex h-[94px] min-w-0 flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border px-1.5 py-3 text-center shadow-[0_6px_16px_rgba(2,17,39,0.16)] transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 sm:h-[112px] sm:gap-3 ${active ? "border-[#55b5ff] bg-gradient-to-b from-[#123c78] to-[#06152e] text-white ring-1 ring-[#2e96ff] shadow-[0_0_18px_rgba(33,150,243,0.55)]" : "border-[#d7e2f1] bg-gradient-to-b from-white to-[#f3f7ff] text-[#071426] hover:border-[#73b7fa]"}`}>
-                  {active && <motion.span layoutId="active-navigation-indicator" className="pointer-events-none absolute inset-0 -z-10 rounded-2xl bg-gradient-to-b from-[#123c78] to-[#06152e]" transition={{type:"spring", stiffness:380, damping:32}} />}
-                  <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl sm:h-10 sm:w-10 ${active ? "bg-[#164f96] text-white" : "bg-[#eaf2ff] text-[#071d41]"}`}>{section.icon}</span>
-                  <span className="w-full break-normal text-center text-[9px] font-extrabold uppercase leading-tight tracking-[-0.02em] min-[370px]:text-[10px] sm:text-xs">{section.name}</span>
+                  className={`group relative isolate flex h-[94px] min-w-0 flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border px-1.5 py-3 text-center shadow-[0_6px_16px_rgba(2,17,39,0.16)] transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 sm:h-[112px] sm:gap-3 ${
+                    active
+                      ? "border-[#55b5ff] bg-gradient-to-b from-[#123c78] to-[#06152e] text-white ring-1 ring-[#2e96ff] shadow-[0_0_18px_rgba(33,150,243,0.55)]"
+                      : "border-[#d7e2f1] bg-gradient-to-b from-white to-[#f3f7ff] text-[#071426] hover:border-[#73b7fa]"
+                  }`}
+                >
+                  {active && (
+                    <motion.span
+                      layoutId="active-navigation-indicator"
+                      className="pointer-events-none absolute inset-0 -z-10 rounded-2xl bg-gradient-to-b from-[#123c78] to-[#06152e]"
+                      transition={{
+                        type: "spring",
+                        stiffness: 380,
+                        damping: 32,
+                      }}
+                    />
+                  )}
+                  <span
+                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl sm:h-10 sm:w-10 ${
+                      active
+                        ? "bg-[#164f96] text-white"
+                        : "bg-[#eaf2ff] text-[#071d41]"
+                    }`}
+                  >
+                    {section.icon}
+                  </span>
+                  <span className="w-full break-normal text-center text-[9px] font-extrabold uppercase leading-tight tracking-[-0.02em] min-[370px]:text-[10px] sm:text-xs">
+                    {section.name}
+                  </span>
                 </button>
               );
             })}
